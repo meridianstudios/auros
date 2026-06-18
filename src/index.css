@@ -133,6 +133,17 @@ input { font-family: inherit; }
 input[type="range"].slider { -webkit-appearance: none; appearance: none; flex: 1; height: 4px; border-radius: 999px; background: var(--surface-alt); outline: none; }
 input[type="range"].slider::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--primary); cursor: pointer; box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 22%, transparent); }
 input[type="range"].slider::-moz-range-thumb { width: 16px; height: 16px; border: none; border-radius: 50%; background: var(--primary); }
+
+/* Radar product switcher (floating) */
+.radar-products {
+  position: absolute; top: calc(env(safe-area-inset-top) + 66px); left: 50%; transform: translateX(-50%);
+  z-index: 600; display: flex; gap: 3px; padding: 4px;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--border); border-radius: 12px; max-width: 94%;
+}
+.radar-products button { padding: 7px 10px; border-radius: 9px; font-size: 12px; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+.radar-products button.on { background: var(--primary); color: #fff; }
 .leaflet-control-attribution { font-size: 9px !important; background: rgba(0,0,0,0.4) !important; color: #aaa !important; }
 .leaflet-bar a { background: var(--surface) !important; color: var(--text) !important; border-color: var(--border) !important; }
 

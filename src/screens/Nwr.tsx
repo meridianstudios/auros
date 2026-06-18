@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Star, ExternalLink } from 'lucide-react';
+import { Star, ExternalLink, Volume2 } from 'lucide-react';
 import { useLocations } from '../context/LocationsContext';
 import { NWR_STATIONS } from '../data/nwrStations';
 import { haversineMiles } from '../utils/geo';
@@ -32,6 +32,26 @@ export function Nwr() {
             Tune a NWR radio to the nearest transmitter you can receive clearly (~50 mi range). Pick the strongest
             signal and confirm it names your county in the broadcast loop.
           </div>
+        </div>
+
+        <div className="label">Listen live</div>
+        <a
+          className="card"
+          href="https://www.broadcastify.com/listen/feed/34945"
+          target="_blank"
+          rel="noreferrer"
+          style={{ display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none', color: 'var(--text)' }}
+        >
+          <span style={{ width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', background: 'color-mix(in srgb, var(--primary) 16%, transparent)', color: 'var(--primary)' }}>
+            <Volume2 size={20} />
+          </span>
+          <div className="grow">
+            <div style={{ fontWeight: 600 }}>Kalamazoo Area NWR · 162.475</div>
+            <div className="muted" style={{ fontSize: 13 }}>Live audio stream (Broadcastify) ↗</div>
+          </div>
+        </a>
+        <div className="dim" style={{ fontSize: 11, marginBottom: 4, lineHeight: 1.5 }}>
+          Third-party stream — can lag 10s–2 min and won't alarm on its own. Not for life-safety; that's your radio + WEA.
         </div>
 
         <div className="label">By distance</div>
