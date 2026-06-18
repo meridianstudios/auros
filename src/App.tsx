@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { House, Radar as RadarIcon, TriangleAlert, RadioTower, Settings as SettingsIcon } from 'lucide-react';
 import { ThemeProvider } from './theme/ThemeContext';
 import { LocationsProvider } from './context/LocationsContext';
 import type { View } from './nav';
@@ -9,12 +10,12 @@ import { Nwr } from './screens/Nwr';
 import { Locations } from './screens/Locations';
 import { Settings } from './screens/Settings';
 
-const TABS: { key: View; label: string; icon: string }[] = [
-  { key: 'home', label: 'Home', icon: '🏠' },
-  { key: 'radar', label: 'Radar', icon: '📡' },
-  { key: 'alerts', label: 'Alerts', icon: '⚠️' },
-  { key: 'nwr', label: 'NWR', icon: '📻' },
-  { key: 'settings', label: 'Settings', icon: '⚙️' },
+const TABS: { key: View; label: string; Icon: typeof House }[] = [
+  { key: 'home', label: 'Home', Icon: House },
+  { key: 'radar', label: 'Radar', Icon: RadarIcon },
+  { key: 'alerts', label: 'Alerts', Icon: TriangleAlert },
+  { key: 'nwr', label: 'Radio', Icon: RadioTower },
+  { key: 'settings', label: 'Settings', Icon: SettingsIcon },
 ];
 
 function Shell() {
@@ -29,12 +30,12 @@ function Shell() {
       {view === 'locations' && <Locations />}
 
       <nav className="tabbar">
-        {TABS.map((t) => {
-          const active = view === t.key || (t.key === 'home' && view === 'locations');
+        {TABS.map(({ key, label, Icon }) => {
+          const active = view === key || (key === 'home' && view === 'locations');
           return (
-            <button key={t.key} className={`tab ${active ? 'active' : ''}`} onClick={() => setView(t.key)}>
-              <span className="ic">{t.icon}</span>
-              {t.label}
+            <button key={key} className={`tab ${active ? 'active' : ''}`} onClick={() => setView(key)}>
+              <Icon size={21} />
+              {label}
             </button>
           );
         })}

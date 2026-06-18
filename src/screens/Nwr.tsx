@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Star, ExternalLink } from 'lucide-react';
 import { useLocations } from '../context/LocationsContext';
 import { NWR_STATIONS } from '../data/nwrStations';
 import { haversineMiles } from '../utils/geo';
@@ -6,12 +7,11 @@ import { haversineMiles } from '../utils/geo';
 const STATUS = {
   normal: { label: 'On air', color: 'var(--success)' },
   degraded: { label: 'Degraded', color: 'var(--warning)' },
-  unknown: { label: 'Unknown', color: 'var(--text-muted)' },
+  unknown: { label: 'Unknown', color: 'var(--text-dim)' },
 };
 
 export function Nwr() {
   const { selected } = useLocations();
-
   const ranked = useMemo(
     () =>
       NWR_STATIONS.map((s) => ({ ...s, miles: haversineMiles(selected.lat, selected.lon, s.lat, s.lon) })).sort(
@@ -21,46 +21,54 @@ export function Nwr() {
   );
 
   return (
-    <div className="view">
-      <div className="bar">
-        <h1>NOAA Weather Radio</h1>
+    <div className="view fade">
+      <div className="topbar">
+        <h1>Weather Radio</h1>
         <p>Transmitters near {selected.name}</p>
       </div>
-      <div className="pad" style={{ paddingTop: 12 }}>
+      <div className="pad">
         <div className="card">
-          <span className="muted">
+          <div className="muted" style={{ fontSize: 14, lineHeight: 1.55 }}>
             Tune a NWR radio to the nearest transmitter you can receive clearly (~50 mi range). Pick the strongest
             signal and confirm it names your county in the broadcast loop.
-          </span>
+          </div>
         </div>
 
-        <div className="section">TRANSMITTERS BY DISTANCE</div>
+        <div className="label">By distance</div>
         {ranked.map((s) => {
           const st = STATUS[s.status];
           return (
-            <div key={s.callSign} className={`card ${s.recommended ? 'recommended' : ''}`}>
-              <div className="nwr-head">
-                <span className="nwr-freq">
-                  {s.freqMHz ? s.freqMHz.toFixed(3) : '—'} {s.channel !== '—' ? `· ${s.channel}` : ''}
+            <div key={s.callSign} className="card" style={s.recommended ? { boxShadow: '0 0 0 1.5px var(--primary), 0 8px 24px -16px var(--shadow)' } : undefined}>
+              <div className="row" style={{ justifyContent: 'space-between' }}>
+                <span style={{ fontWeight: 600, fontSize: 17, fontVariantNumeric: 'tabular-nums' }}>
+                  {s.freqMHz ? s.freqMHz.toFixed(3) : '—'} <span className="dim" style={{ fontSize: 13, fontWeight: 500 }}>{s.channel !== '—' ? s.channel : ''}</span>
                 </span>
-                <span className="status" style={{ color: st.color }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: st.color, fontWeight: 600, fontSize: 13 }}>
                   <span className="dot" style={{ background: st.color }} /> {st.label}
                 </span>
               </div>
-              <div style={{ marginTop: 4 }}>{s.location} · {s.callSign}</div>
-              <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>~{Math.round(s.miles)} mi away</div>
-              <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>{s.counties}</div>
-              {s.note && <div className="muted" style={{ fontSize: 12, marginTop: 8, fontStyle: 'italic' }}>{s.note}</div>}
-              {s.recommended && <div className="tag-rec">★ Recommended — best signal here</div>}
+              <div style={{ marginTop: 4, fontSize: 14 }}>{s.location} · {s.callSign}</div>
+              <div className="dim" style={{ fontSize: 12, marginTop: 2 }}>~{Math.round(s.miles)} mi · {s.counties}</div>
+              {s.note && <div className="muted" style={{ fontSize: 12.5, marginTop: 8, lineHeight: 1.5 }}>{s.note}</div>}
+              {s.recommended && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, color: 'var(--primary)', fontWeight: 600, fontSize: 12.5 }}>
+                  <Star size={14} fill="currentColor" /> Recommended — best signal here
+                </div>
+              )}
             </div>
           );
         })}
 
-        <div style={{ textAlign: 'center', marginTop: 8 }}>
-          <a href="https://www.weather.gov/nwr/" target="_blank" rel="noreferrer">Live NWR outage info (weather.gov) ↗</a>
-        </div>
-        <div className="muted" style={{ textAlign: 'center', fontSize: 11, marginTop: 10 }}>
-          Status is curated, not live. Always confirm with the official outage page.
+        <a
+          href="https://www.weather.gov/nwr/"
+          target="_blank"
+          rel="noreferrer"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 6, fontWeight: 600, fontSize: 14 }}
+        >
+          Live NWR outage info <ExternalLink size={14} />
+        </a>
+        <div className="dim" style={{ textAlign: 'center', fontSize: 11, marginTop: 10 }}>
+          Status is curated, not live. Confirm with the official outage page.
         </div>
       </div>
     </div>

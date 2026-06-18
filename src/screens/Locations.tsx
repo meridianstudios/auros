@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { CircleCheck, Circle, Trash2, Navigation, Search } from 'lucide-react';
 import { useLocations } from '../context/LocationsContext';
 
 export function Locations() {
@@ -12,7 +13,6 @@ export function Locations() {
     try { await addByCurrentPosition(); } catch (e: any) { setMsg(e?.message ?? 'Could not get location'); }
     finally { setBusy(null); }
   };
-
   const search = async () => {
     if (!query.trim()) return;
     setBusy('search'); setMsg(null);
@@ -21,43 +21,43 @@ export function Locations() {
   };
 
   return (
-    <div className="view">
-      <div className="bar">
+    <div className="view fade">
+      <div className="topbar">
         <h1>Locations</h1>
-        <p>Track multiple places · tap to make active</p>
+        <p>Tap a place to make it active</p>
       </div>
-      <div className="pad" style={{ paddingTop: 12 }}>
-        <div className="section">SAVED</div>
-        {locations.map((l) => (
-          <div key={l.id} className="card">
-            <div className="loc-item">
-              <button
-                className="loc-item"
-                style={{ flex: 1, background: 'none', color: 'var(--text)', textAlign: 'left', padding: 0 }}
-                onClick={() => select(l.id)}
-              >
-                <span style={{ color: l.id === selectedId ? 'var(--primary)' : 'var(--text-muted)', fontSize: 18 }}>
-                  {l.id === selectedId ? '◉' : '○'}
-                </span>
-                <span>
-                  <span className="name">{l.name}</span>
-                  <br />
-                  <span className="coord">{l.lat.toFixed(3)}, {l.lon.toFixed(3)}</span>
-                </span>
-              </button>
-              {locations.length > 1 && (
-                <button style={{ background: 'none', color: 'var(--danger)', fontSize: 16 }} onClick={() => remove(l.id)}>🗑</button>
-              )}
-            </div>
-          </div>
-        ))}
+      <div className="pad">
+        <div className="label">Saved</div>
+        <div className="group">
+          {locations.map((l) => {
+            const active = l.id === selectedId;
+            return (
+              <div key={l.id} className="item">
+                <button className="grow" style={{ display: 'flex', alignItems: 'center', gap: 14 }} onClick={() => select(l.id)}>
+                  <span className="ic" style={{ color: active ? 'var(--primary)' : 'var(--text-dim)' }}>
+                    {active ? <CircleCheck size={20} /> : <Circle size={20} />}
+                  </span>
+                  <span className="grow">
+                    <span className="t" style={{ display: 'block' }}>{l.name}</span>
+                    <span className="s" style={{ fontVariantNumeric: 'tabular-nums' }}>{l.lat.toFixed(3)}, {l.lon.toFixed(3)}</span>
+                  </span>
+                </button>
+                {locations.length > 1 && (
+                  <button className="ic" style={{ color: 'var(--text-dim)' }} onClick={() => remove(l.id)} aria-label="Remove">
+                    <Trash2 size={17} />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
 
-        <div className="section">ADD A LOCATION</div>
+        <div className="label">Add a location</div>
         <div className="card">
           <button className="btn btn-primary" onClick={useGps} disabled={busy === 'gps'}>
-            {busy === 'gps' ? 'Locating…' : '📍 Use my current location'}
+            <Navigation size={16} /> {busy === 'gps' ? 'Locating…' : 'Use my current location'}
           </button>
-          <div className="muted" style={{ fontSize: 12, margin: '16px 0 6px' }}>Or search by city / place</div>
+          <div className="dim" style={{ fontSize: 13, margin: '16px 0 8px' }}>Or search by city / place</div>
           <div className="row">
             <input
               className="input"
@@ -66,11 +66,11 @@ export function Locations() {
               placeholder="e.g. Kalamazoo, MI"
               onKeyDown={(e) => e.key === 'Enter' && search()}
             />
-            <button className="btn btn-ghost" onClick={search} disabled={busy === 'search'} style={{ width: 54 }}>
-              {busy === 'search' ? '…' : '🔍'}
+            <button className="btn btn-ghost" style={{ width: 52, flex: 'none' }} onClick={search} disabled={busy === 'search'} aria-label="Search">
+              <Search size={18} />
             </button>
           </div>
-          {msg && <div className="muted" style={{ fontSize: 12, marginTop: 10, color: 'var(--danger)' }}>{msg}</div>}
+          {msg && <div style={{ color: 'var(--danger)', fontSize: 13, marginTop: 10 }}>{msg}</div>}
         </div>
       </div>
     </div>

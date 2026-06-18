@@ -19,6 +19,8 @@ function applyVars(p: Palette) {
   r.style.setProperty('--border', p.border);
   r.style.setProperty('--text', p.text);
   r.style.setProperty('--text-muted', p.textMuted);
+  r.style.setProperty('--text-dim', p.textDim);
+  r.style.setProperty('--shadow', p.shadow);
   r.style.setProperty('--primary', p.primary);
   r.style.setProperty('--accent', p.accent);
   r.style.setProperty('--success', p.success);

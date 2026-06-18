@@ -1,4 +1,4 @@
-// Palettes (applied as CSS variables) + SPC risk + severity colors.
+// Refined, minimal palette (applied as CSS variables) + SPC risk + severity colors.
 
 export type Scheme = 'dark' | 'light';
 
@@ -9,39 +9,45 @@ export interface Palette {
   border: string;
   text: string;
   textMuted: string;
+  textDim: string;
   primary: string;
   accent: string;
   success: string;
   warning: string;
   danger: string;
+  shadow: string;
 }
 
 export const palettes: Record<Scheme, Palette> = {
   dark: {
-    background: '#0B1020',
-    surface: '#151B2E',
-    surfaceAlt: '#1E2742',
-    border: '#2A3350',
-    text: '#EAF0FF',
-    textMuted: '#9AA7C7',
-    primary: '#7C8CFF',
-    accent: '#22D3EE',
-    success: '#34D399',
+    background: '#0A0C12',
+    surface: '#13161F',
+    surfaceAlt: '#1C1F2B',
+    border: 'rgba(255,255,255,0.07)',
+    text: '#F4F6FB',
+    textMuted: '#8B91A3',
+    textDim: '#5A6072',
+    primary: '#6E8BFF',
+    accent: '#6E8BFF',
+    success: '#4ADE80',
     warning: '#FBBF24',
-    danger: '#F87171',
+    danger: '#FB7185',
+    shadow: 'rgba(0,0,0,0.5)',
   },
   light: {
-    background: '#F4F7FC',
+    background: '#FBFBFD',
     surface: '#FFFFFF',
-    surfaceAlt: '#EAF0FB',
-    border: '#D8E0F0',
-    text: '#0F1733',
-    textMuted: '#5A6488',
-    primary: '#5B4FE0',
-    accent: '#0E9FB8',
-    success: '#10B981',
+    surfaceAlt: '#F1F3F8',
+    border: 'rgba(0,0,0,0.08)',
+    text: '#0B0D14',
+    textMuted: '#6B7180',
+    textDim: '#9AA0AE',
+    primary: '#3B6FE5',
+    accent: '#3B6FE5',
+    success: '#16A34A',
     warning: '#D97706',
-    danger: '#DC2626',
+    danger: '#E11D48',
+    shadow: 'rgba(20,30,60,0.10)',
   },
 };
 
@@ -51,16 +57,15 @@ export interface RiskMeta {
   label: string;
   full: string;
   color: string;
-  textOn: string;
 }
 
 const RISK: Record<string, RiskMeta> = {
-  TSTM: { key: 'TSTM', level: 0, label: 'TSTM', full: 'General Thunderstorms', color: '#BFE9C0', textOn: '#0B2014' },
-  MRGL: { key: 'MRGL', level: 1, label: 'MRGL', full: 'Marginal (1/5)', color: '#5BA35B', textOn: '#06210C' },
-  SLGT: { key: 'SLGT', level: 2, label: 'SLGT', full: 'Slight (2/5)', color: '#F4D03F', textOn: '#2B2200' },
-  ENH: { key: 'ENH', level: 3, label: 'ENH', full: 'Enhanced (3/5)', color: '#F39C3C', textOn: '#2B1800' },
-  MDT: { key: 'MDT', level: 4, label: 'MDT', full: 'Moderate (4/5)', color: '#E55B5B', textOn: '#2B0606' },
-  HIGH: { key: 'HIGH', level: 5, label: 'HIGH', full: 'High (5/5)', color: '#F25CF2', textOn: '#2B062B' },
+  TSTM: { key: 'TSTM', level: 0, label: 'TSTM', full: 'General Thunderstorms', color: '#7FB98B' },
+  MRGL: { key: 'MRGL', level: 1, label: 'MRGL', full: 'Marginal', color: '#4E9E5E' },
+  SLGT: { key: 'SLGT', level: 2, label: 'SLGT', full: 'Slight', color: '#E0B93C' },
+  ENH: { key: 'ENH', level: 3, label: 'ENH', full: 'Enhanced', color: '#E2872F' },
+  MDT: { key: 'MDT', level: 4, label: 'MDT', full: 'Moderate', color: '#DE5450' },
+  HIGH: { key: 'HIGH', level: 5, label: 'HIGH', full: 'High', color: '#E25CD9' },
 };
 
 export function getRiskMeta(label?: string | null): RiskMeta | null {
@@ -70,11 +75,11 @@ export function getRiskMeta(label?: string | null): RiskMeta | null {
 
 export function severityColor(severity?: string, event?: string): string {
   const e = (event ?? '').toLowerCase();
-  if (e.includes('tornado')) return '#F87171';
-  if (e.includes('flash flood') || e.includes('severe thunderstorm')) return '#FB923C';
+  if (e.includes('tornado')) return '#FB7185';
+  if (e.includes('flash flood') || e.includes('severe thunderstorm')) return '#F59E0B';
   const s = (severity ?? '').toLowerCase();
-  if (s === 'extreme') return '#F87171';
-  if (s === 'severe') return '#FB923C';
-  if (s === 'moderate') return '#FBBF24';
-  return '#22D3EE';
+  if (s === 'extreme') return '#FB7185';
+  if (s === 'severe') return '#F59E0B';
+  if (s === 'moderate') return '#E0B93C';
+  return '#6E8BFF';
 }
