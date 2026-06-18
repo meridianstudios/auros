@@ -1,10 +1,30 @@
 import { useState } from 'react';
 import { Moon, Sun, Bell, ExternalLink } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
+import { usePrefs, type NotifyPrefs } from '../lib/prefs';
 import { notify } from '../lib/notify';
+
+function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button className={`toggle ${on ? 'on' : ''}`} role="switch" aria-checked={on} onClick={() => onChange(!on)}>
+      <span className="knob" />
+    </button>
+  );
+}
+
+const hourLabel = (h: number) => new Date(2020, 0, 1, h).toLocaleTimeString([], { hour: 'numeric' });
+
+const NOTIFY_ROWS: { key: keyof NotifyPrefs; label: string; sub: string }[] = [
+  { key: 'tornado', label: 'Tornado warnings', sub: 'Always alerts, even during quiet hours' },
+  { key: 'severe', label: 'Severe & flash-flood warnings', sub: 'Severe thunderstorm, flash flood' },
+  { key: 'watches', label: 'Watches', sub: 'Tornado & severe thunderstorm watches' },
+  { key: 'advisories', label: 'Advisories & statements', sub: 'Wind, flood, etc.' },
+  { key: 'stormHeadsUp', label: 'Storm heads-up', sub: 'Timeline notice when storms approach' },
+];
 
 export function Settings() {
   const { scheme, setScheme } = useTheme();
+  const { prefs, setUnits, setNotify, setQuiet } = usePrefs();
   const [msg, setMsg] = useState<string | null>(null);
 
   const test = async () => {
@@ -17,16 +37,56 @@ export function Settings() {
       <div className="topbar"><h1>Settings</h1></div>
       <div className="pad">
         <div className="label">Appearance</div>
-        <div className="seg">
+        <div className="seg" style={{ marginBottom: 10 }}>
           <button className={scheme === 'dark' ? 'on' : ''} onClick={() => setScheme('dark')}><Moon size={15} /> Dark</button>
           <button className={scheme === 'light' ? 'on' : ''} onClick={() => setScheme('light')}><Sun size={15} /> Light</button>
+        </div>
+        <div className="seg">
+          <button className={prefs.units === 'F' ? 'on' : ''} onClick={() => setUnits('F')}>°F</button>
+          <button className={prefs.units === 'C' ? 'on' : ''} onClick={() => setUnits('C')}>°C</button>
+        </div>
+
+        <div className="label">Notify me about</div>
+        <div className="group">
+          {NOTIFY_ROWS.map((r) => (
+            <div className="item" key={r.key}>
+              <div className="grow">
+                <div className="t">{r.label}</div>
+                <div className="s">{r.sub}</div>
+              </div>
+              <Toggle on={prefs.notify[r.key]} onChange={(v) => setNotify(r.key, v)} />
+            </div>
+          ))}
+        </div>
+
+        <div className="label">Quiet hours</div>
+        <div className="group">
+          <div className="item">
+            <div className="grow">
+              <div className="t">Silence non-tornado alerts</div>
+              <div className="s">Tornado warnings still come through</div>
+            </div>
+            <Toggle on={prefs.quiet.enabled} onChange={(v) => setQuiet({ enabled: v })} />
+          </div>
+          {prefs.quiet.enabled && (
+            <div className="item">
+              <div className="grow"><div className="t">From</div></div>
+              <select className="hsel" value={prefs.quiet.start} onChange={(e) => setQuiet({ start: Number(e.target.value) })}>
+                {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{hourLabel(h)}</option>)}
+              </select>
+              <span className="dim" style={{ margin: '0 4px' }}>to</span>
+              <select className="hsel" value={prefs.quiet.end} onChange={(e) => setQuiet({ end: Number(e.target.value) })}>
+                {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{hourLabel(h)}</option>)}
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="label">Notifications</div>
         <div className="card">
           <div className="muted" style={{ fontSize: 14, lineHeight: 1.55 }}>
-            Shows a notification when a warning is active for your location. Background push (even when the app is
-            closed) arrives in Phase 3 with a service worker + server.
+            Notifications fire while the app is open. Background push (even when closed) arrives in Phase 3 with a
+            service worker + server.
           </div>
           <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={test}><Bell size={16} /> Send a test notification</button>
           {msg && <div className="muted" style={{ fontSize: 13, marginTop: 10 }}>{msg}</div>}
@@ -35,10 +95,10 @@ export function Settings() {
         <div className="label">About</div>
         <div className="card">
           <div style={{ fontWeight: 600, fontSize: 17 }}>Nova Weather</div>
-          <div className="dim" style={{ fontSize: 13, marginTop: 2 }}>v0.1.0 · Phase 1</div>
+          <div className="dim" style={{ fontSize: 13, marginTop: 2 }}>v0.2.0 · Phase 2</div>
           <div className="muted" style={{ fontSize: 13.5, lineHeight: 1.55, marginTop: 12 }}>
-            Data from the National Weather Service, SPC, and RainViewer — all free and public domain. This app
-            complements, and does not replace, a NOAA weather radio and Wireless Emergency Alerts.
+            Data from the National Weather Service, SPC, and RainViewer — all free and public domain. Complements,
+            does not replace, a NOAA weather radio and Wireless Emergency Alerts.
           </div>
           <a href="https://www.weather.gov/" target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 14, fontWeight: 600, fontSize: 14 }}>
             weather.gov <ExternalLink size={14} />

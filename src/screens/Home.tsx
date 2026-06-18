@@ -1,27 +1,61 @@
 import { useEffect, useRef } from 'react';
-import { MapPin, ChevronDown, ChevronRight, ShieldCheck } from 'lucide-react';
+import {
+  MapPin, ChevronDown, ChevronRight, ShieldCheck, CloudLightning,
+  Sun, Moon, Cloud, CloudSun, CloudMoon, CloudRain, CloudDrizzle, CloudSnow, CloudFog,
+} from 'lucide-react';
 import { useLocations } from '../context/LocationsContext';
 import { useWeather } from '../hooks/useWeather';
+import { usePrefs, convertTemp, shouldNotifyAlert, isQuietNow } from '../lib/prefs';
 import { RiskBadge } from '../components/RiskBadge';
 import { AlertCard } from '../components/AlertCard';
 import { notify } from '../lib/notify';
+import { formatTime } from '../utils/format';
+import type { NwsPeriod } from '../api/nws';
 import type { View } from '../nav';
+
+function CondIcon({ p, size = 20 }: { p: NwsPeriod; size?: number }) {
+  const s = (p.shortForecast || '').toLowerCase();
+  const day = p.isDaytime !== false;
+  const props = { size, color: 'var(--text-muted)' };
+  if (/thunder|t-storm/.test(s)) return <CloudLightning {...props} />;
+  if (/snow|sleet|ice|wintry/.test(s)) return <CloudSnow {...props} />;
+  if (/drizzle/.test(s)) return <CloudDrizzle {...props} />;
+  if (/rain|shower/.test(s)) return <CloudRain {...props} />;
+  if (/fog|haze|mist/.test(s)) return <CloudFog {...props} />;
+  if (/cloud|overcast/.test(s)) return /partly|mostly sunny|few/.test(s) ? (day ? <CloudSun {...props} /> : <CloudMoon {...props} />) : <Cloud {...props} />;
+  if (/sun|clear/.test(s)) return day ? <Sun {...props} /> : <Moon {...props} />;
+  return day ? <CloudSun {...props} /> : <CloudMoon {...props} />;
+}
 
 export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
   const { selected } = useLocations();
+  const { prefs } = usePrefs();
   const w = useWeather(selected.lat, selected.lon);
   const notified = useRef<Set<string>>(new Set());
+  const u = prefs.units;
 
+  // Alert notifications, gated by per-event prefs + quiet hours.
   useEffect(() => {
     w.alerts.forEach((a) => {
-      if (/warning/i.test(a.event) && !notified.current.has(a.id)) {
+      if (!notified.current.has(a.id) && shouldNotifyAlert(a.event, prefs)) {
         notified.current.add(a.id);
-        notify(`${a.event}`, a.headline ?? selected.name);
+        notify(a.event, a.headline ?? selected.name);
       }
     });
-  }, [w.alerts, selected.name]);
+  }, [w.alerts, prefs, selected.name]);
+
+  // Storm-approach heads-up (once per detected window).
+  useEffect(() => {
+    const tl = w.timeline;
+    if (!tl || !prefs.notify.stormHeadsUp || isQuietNow(prefs.quiet)) return;
+    const key = `tl-${tl.startIso}`;
+    if (notified.current.has(key)) return;
+    notified.current.add(key);
+    notify('Storms expected', `${selected.name}: likely ${formatTime(tl.startIso)}–${formatTime(tl.endIso)}, peak ${tl.peakPop}%`);
+  }, [w.timeline, prefs, selected.name]);
 
   const place = w.point?.city ? `${w.point.city}, ${w.point.state}` : selected.name;
+  const tl = w.timeline;
 
   return (
     <div className="view fade">
@@ -29,14 +63,12 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
         <button className="place" onClick={() => onNavigate('locations')}>
           <MapPin size={15} /> {place} <ChevronDown size={14} style={{ opacity: 0.5 }} />
         </button>
-        <div className="temp">{w.current ? `${w.current.temperature}°` : '—'}</div>
+        <div className="temp">{w.current ? `${convertTemp(w.current.temperature, u)}°` : '—'}</div>
         <div className="cond">{w.current?.shortForecast ?? (w.loading ? 'Updating…' : 'Unavailable')}</div>
         {w.current && (
           <div className="meta">
             Wind {w.current.windDirection} {w.current.windSpeed}
-            {w.current.probabilityOfPrecipitation?.value != null
-              ? `  ·  ${w.current.probabilityOfPrecipitation.value}% precip`
-              : ''}
+            {w.current.probabilityOfPrecipitation?.value != null ? `  ·  ${w.current.probabilityOfPrecipitation.value}% precip` : ''}
           </div>
         )}
       </div>
@@ -52,12 +84,50 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
           </>
         )}
 
+        {/* Storm-approach timeline — the Phase 2 headline */}
+        {tl && (
+          <>
+            <div className="label">Storm Timeline</div>
+            <div className="card timeline-card">
+              <span className="tl-ic"><CloudLightning size={22} /></span>
+              <div>
+                <div className="tl-title">
+                  {tl.startIso === tl.endIso
+                    ? `Storms likely around ${formatTime(tl.startIso)}`
+                    : `Storms likely ${formatTime(tl.startIso)} – ${formatTime(tl.endIso)}`}
+                </div>
+                <div className="tl-sub">Peak around {formatTime(tl.peakIso)} · {tl.peakPop}% chance</div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Hourly strip */}
+        {w.hourly.length > 0 && (
+          <>
+            <div className="label">Hourly</div>
+            <div className="hourly">
+              {w.hourly.slice(0, 12).map((h) => {
+                const pop = h.probabilityOfPrecipitation?.value ?? 0;
+                return (
+                  <div className="hour" key={h.startTime}>
+                    <div className="hr">{new Date(h.startTime).toLocaleTimeString([], { hour: 'numeric' })}</div>
+                    <CondIcon p={h} size={20} />
+                    <div className="hpop">{pop >= 10 ? `${pop}%` : ''}</div>
+                    <div className="htemp">{convertTemp(h.temperature, u)}°</div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
         <div className="label">Severe Outlook</div>
         <div className="card">
           <RiskBadge risk={w.risk} error={w.riskError} />
           {w.riskTomorrow && (
             <div className="muted" style={{ fontSize: 13, marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-              Tomorrow · <span style={{ color: 'var(--text)' }}>{w.riskTomorrow.full}</span>
+              Tomorrow · <span style={{ color: 'var(--text)' }}>{w.riskTomorrow.full} Risk</span>
             </div>
           )}
         </div>

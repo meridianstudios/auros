@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { House, Radar as RadarIcon, TriangleAlert, RadioTower, Settings as SettingsIcon } from 'lucide-react';
 import { ThemeProvider } from './theme/ThemeContext';
 import { LocationsProvider } from './context/LocationsContext';
+import { PrefsProvider } from './lib/prefs';
 import type { View } from './nav';
 import { Home } from './screens/Home';
 import { Radar } from './screens/Radar';
@@ -47,9 +48,11 @@ function Shell() {
 export default function App() {
   return (
     <ThemeProvider>
-      <LocationsProvider>
-        <Shell />
-      </LocationsProvider>
+      <PrefsProvider>
+        <LocationsProvider>
+          <Shell />
+        </LocationsProvider>
+      </PrefsProvider>
     </ThemeProvider>
   );
 }

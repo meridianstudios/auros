@@ -29,6 +29,8 @@ export interface NwsAlert {
 export interface NwsPeriod {
   number: number;
   name: string;
+  startTime: string;
+  isDaytime?: boolean;
   temperature: number;
   temperatureUnit: string;
   windSpeed: string;

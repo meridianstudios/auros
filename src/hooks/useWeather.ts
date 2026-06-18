@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getActiveAlerts, getForecast, getPoint, type NwsAlert, type NwsPeriod, type NwsPoint } from '../api/nws';
 import { getDayRisk } from '../api/spc';
+import { analyzeStormTimeline, type StormWindow } from '../api/timeline';
 import type { RiskMeta } from '../theme/colors';
 
 export interface UseWeather {
   point: NwsPoint | null;
   current: NwsPeriod | null;
+  hourly: NwsPeriod[];
+  timeline: StormWindow | null;
   risk: RiskMeta | null;
   riskTomorrow: RiskMeta | null;
   riskError: boolean;
@@ -18,6 +21,8 @@ export interface UseWeather {
 export function useWeather(lat: number, lon: number): UseWeather {
   const [point, setPoint] = useState<NwsPoint | null>(null);
   const [current, setCurrent] = useState<NwsPeriod | null>(null);
+  const [hourly, setHourly] = useState<NwsPeriod[]>([]);
+  const [timeline, setTimeline] = useState<StormWindow | null>(null);
   const [risk, setRisk] = useState<RiskMeta | null>(null);
   const [riskTomorrow, setRiskTomorrow] = useState<RiskMeta | null>(null);
   const [riskError, setRiskError] = useState(false);
@@ -46,8 +51,12 @@ export function useWeather(lat: number, lon: number): UseWeather {
       try {
         const periods = await getForecast(p.forecastHourlyUrl);
         setCurrent(periods[0] ?? null);
+        setHourly(periods.slice(0, 24));
+        setTimeline(analyzeStormTimeline(periods));
       } catch {
         setCurrent(null);
+        setHourly([]);
+        setTimeline(null);
       }
     }
 
@@ -59,5 +68,5 @@ export function useWeather(lat: number, lon: number): UseWeather {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  return { point, current, risk, riskTomorrow, riskError, alerts, loading, error, refresh };
+  return { point, current, hourly, timeline, risk, riskTomorrow, riskError, alerts, loading, error, refresh };
 }
