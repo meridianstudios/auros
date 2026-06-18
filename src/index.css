@@ -117,7 +117,22 @@ input { font-family: inherit; }
 .radar-pill .ttl { font-weight: 600; font-size: 14px; }
 .radar-pill .sub { color: var(--text-muted); font-size: 11px; margin-top: 1px; }
 .radar-ts { font-variant-numeric: tabular-nums; font-weight: 600; font-size: 13px; }
-.radar-note { position: absolute; bottom: calc(var(--tab-h) + env(safe-area-inset-bottom) + 14px); left: 16px; right: 16px; z-index: 600; text-align: center; color: var(--text-muted); font-size: 11px; background: color-mix(in srgb, var(--bg) 70%, transparent); backdrop-filter: blur(10px); border-radius: 10px; padding: 7px; pointer-events: none; }
+/* Radar playback controls */
+.radar-controls {
+  position: fixed; bottom: calc(var(--tab-h) + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: var(--maxw); z-index: 650;
+  display: flex; align-items: center; gap: 14px; padding: 12px 18px;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  border-top: 1px solid var(--border);
+}
+.radar-controls .play { width: 42px; height: 42px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; flex: none; }
+.radar-controls .play:active { opacity: .8; }
+.radar-controls .stamp { font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 600; min-width: 70px; text-align: right; }
+.radar-controls .stamp .fc { color: var(--warning); font-weight: 600; }
+input[type="range"].slider { -webkit-appearance: none; appearance: none; flex: 1; height: 4px; border-radius: 999px; background: var(--surface-alt); outline: none; }
+input[type="range"].slider::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--primary); cursor: pointer; box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 22%, transparent); }
+input[type="range"].slider::-moz-range-thumb { width: 16px; height: 16px; border: none; border-radius: 50%; background: var(--primary); }
 .leaflet-control-attribution { font-size: 9px !important; background: rgba(0,0,0,0.4) !important; color: #aaa !important; }
 .leaflet-bar a { background: var(--surface) !important; color: var(--text) !important; border-color: var(--border) !important; }
 
