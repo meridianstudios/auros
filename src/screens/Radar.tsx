@@ -5,13 +5,17 @@ import { useLocations } from '../context/LocationsContext';
 import { useTheme } from '../theme/ThemeContext';
 import { getRadar, type RadarFrame } from '../api/rainviewer';
 
+// 1x1 transparent PNG — failed/empty radar tiles render invisible, never grey.
+const TRANSPARENT =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/QBYAAAAAElFTkSuQmCC';
+
 export function Radar() {
   const { selected } = useLocations();
   const { scheme } = useTheme();
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
-  const layersRef = useRef<(L.TileLayer | null)[]>([]);
+  const radarLayerRef = useRef<L.TileLayer | null>(null);
   const framesRef = useRef<RadarFrame[]>([]);
   const hostRef = useRef('');
 
@@ -20,28 +24,14 @@ export function Radar() {
   const [playing, setPlaying] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Create a frame's tile layer only when first needed (keeps it cached after).
-  const ensureLayer = useCallback((i: number) => {
-    const map = mapRef.current;
+  const urlFor = (f: RadarFrame) => `${hostRef.current}${f.path}/256/{z}/{x}/{y}/2/1_1.png`;
+
+  // Swap the single layer's tiles to the chosen frame (no extra layers = no zoom rate-limit storm).
+  const showFrame = useCallback((i: number) => {
     const f = framesRef.current[i];
-    if (!map || !f) return;
-    if (layersRef.current[i]) return;
-    layersRef.current[i] = L.tileLayer(`${hostRef.current}${f.path}/256/{z}/{x}/{y}/2/1_1.png`, {
-      opacity: 0,
-      maxNativeZoom: 10, // RainViewer radar resolution; upscales when zoomed past this
-      maxZoom: 18,
-      zIndex: 5,
-      updateWhenIdle: false,
-      className: 'radar-tiles',
-    }).addTo(map);
+    if (radarLayerRef.current && f) radarLayerRef.current.setUrl(urlFor(f));
   }, []);
 
-  const showFrame = useCallback((i: number) => {
-    ensureLayer(i);
-    layersRef.current.forEach((l, k) => l && l.setOpacity(k === i ? 0.82 : 0));
-  }, [ensureLayer]);
-
-  // Build map + load radar metadata (re-runs on location / theme change).
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -69,20 +59,27 @@ export function Radar() {
     const ro = new ResizeObserver(fix);
     ro.observe(el);
 
-    layersRef.current = [];
     getRadar()
       .then((radar) => {
         if (cancelled) return;
         const fr = radar.frames.slice(-12);
+        if (!fr.length) { setError('No radar data available'); return; }
         framesRef.current = fr;
         hostRef.current = radar.host;
-        layersRef.current = fr.map(() => null);
         setFrames(fr);
-        if (!fr.length) { setError('No radar data available'); return; }
         const firstNow = fr.findIndex((f) => f.nowcast);
         const start = firstNow > 0 ? firstNow - 1 : firstNow === 0 ? 0 : fr.length - 1;
+        // ONE radar layer for the whole loop. maxNativeZoom caps requests at the
+        // radar's resolution and upscales when zoomed in (so it never greys out).
+        radarLayerRef.current = L.tileLayer(`${radar.host}${fr[start].path}/256/{z}/{x}/{y}/2/1_1.png`, {
+          opacity: 0.82,
+          maxNativeZoom: 10,
+          maxZoom: 18,
+          zIndex: 5,
+          updateWhenIdle: false,
+          errorTileUrl: TRANSPARENT,
+        }).addTo(map);
         setIdx(start);
-        showFrame(start);
       })
       .catch((e) => !cancelled && setError(e?.message ?? 'Radar unavailable'));
 
@@ -93,17 +90,15 @@ export function Radar() {
       ro.disconnect();
       map.remove();
       mapRef.current = null;
-      layersRef.current = [];
+      radarLayerRef.current = null;
       framesRef.current = [];
     };
-  }, [selected.lat, selected.lon, scheme, showFrame]);
+  }, [selected.lat, selected.lon, scheme]);
 
-  // Reflect the active frame.
   useEffect(() => {
     if (frames.length) showFrame(idx);
   }, [idx, frames.length, showFrame]);
 
-  // Playback loop (one new frame per tick = gentle tile loading, no rate-limit storm).
   useEffect(() => {
     if (!playing || frames.length < 2) return;
     const t = setInterval(() => setIdx((i) => (i + 1) % frames.length), 900);
