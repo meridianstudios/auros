@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
-import { Play, Pause } from 'lucide-react';
+import { Play, Pause, Lock } from 'lucide-react';
 import { useLocations } from '../context/LocationsContext';
 import { useTheme } from '../theme/ThemeContext';
-import { getPoint } from '../api/nws';
 
 const TRANSPARENT =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/QBYAAAAAElFTkSuQmCC';
@@ -16,6 +15,7 @@ const FRAMES: Frame[] = [50, 45, 40, 35, 30, 25, 20, 15, 10, 5, 0].map((m) => ({
   suffix: m === 0 ? '' : `-m${String(m).padStart(2, '0')}m`,
   minsAgo: m,
 }));
+const refUrl = (idx: number) => `${IEM}/nexrad-n0q-900913${FRAMES[idx].suffix}/{z}/{x}/{y}.png`;
 
 type Product = 'ref' | 'vel' | 'cc';
 const PRODUCTS: { key: Product; label: string; long: string }[] = [
@@ -23,12 +23,6 @@ const PRODUCTS: { key: Product; label: string; long: string }[] = [
   { key: 'vel', label: 'Velocity', long: 'Base Velocity' },
   { key: 'cc', label: 'Corr. Coeff', long: 'Correlation Coefficient' },
 ];
-
-function frameUrl(product: Product, idx: number, site: string): string {
-  if (product === 'ref') return `${IEM}/nexrad-n0q-900913${FRAMES[idx].suffix}/{z}/{x}/{y}.png`;
-  const prod = product === 'vel' ? 'N0U' : 'N0C'; // single-radar Level III, latest scan
-  return `${IEM}/ridge::${site}-${prod}-0/{z}/{x}/{y}.png`;
-}
 
 export function Radar() {
   const { selected } = useLocations();
@@ -41,13 +35,10 @@ export function Radar() {
   const [product, setProduct] = useState<Product>('ref');
   const [idx, setIdx] = useState(FRAMES.length - 1);
   const [playing, setPlaying] = useState(true);
-  const [site, setSite] = useState('KIWX');
 
-  // Build the map (re-runs on location / theme change).
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    let cancelled = false;
 
     const map = L.map(el, { zoomControl: true, attributionControl: true, maxZoom: 16, minZoom: 4 }).setView(
       [selected.lat, selected.lon],
@@ -71,7 +62,7 @@ export function Radar() {
     const ro = new ResizeObserver(fix);
     ro.observe(el);
 
-    radarLayerRef.current = L.tileLayer(frameUrl('ref', FRAMES.length - 1, 'KIWX'), {
+    radarLayerRef.current = L.tileLayer(refUrl(FRAMES.length - 1), {
       opacity: 0.72,
       maxNativeZoom: 14,
       maxZoom: 16,
@@ -81,13 +72,7 @@ export function Radar() {
       attribution: 'NEXRAD: NWS / Iowa Environmental Mesonet',
     }).addTo(map);
 
-    // Nearest radar for the single-site (velocity / CC) products.
-    getPoint(selected.lat, selected.lon)
-      .then((p) => { if (!cancelled && p.radarStation) setSite(p.radarStation); })
-      .catch(() => {});
-
     return () => {
-      cancelled = true;
       clearTimeout(t1);
       clearTimeout(t2);
       ro.disconnect();
@@ -97,12 +82,21 @@ export function Radar() {
     };
   }, [selected.lat, selected.lon, scheme]);
 
-  // Update the layer whenever product / frame / radar changes.
+  // Reflectivity drives the live tile layer. Velocity/CC have no free map layer
+  // (they need a Level III decoder backend — Phase 3), so we pull the layer off
+  // the map instead of showing IEM's error tiles.
   useEffect(() => {
-    radarLayerRef.current?.setUrl(frameUrl(product, idx, site));
-  }, [product, idx, site]);
+    const map = mapRef.current;
+    const layer = radarLayerRef.current;
+    if (!map || !layer) return;
+    if (product === 'ref') {
+      if (!map.hasLayer(layer)) layer.addTo(map);
+      layer.setUrl(refUrl(idx));
+    } else if (map.hasLayer(layer)) {
+      map.removeLayer(layer);
+    }
+  }, [product, idx]);
 
-  // Animate reflectivity only.
   useEffect(() => {
     if (product !== 'ref' || !playing) return;
     const t = setInterval(() => setIdx((i) => (i + 1) % FRAMES.length), 700);
@@ -120,7 +114,7 @@ export function Radar() {
         <div className="radar-float">
           <div className="radar-pill" style={{ pointerEvents: 'auto' }}>
             <div className="ttl">{meta.long}</div>
-            <div className="sub">{product === 'ref' ? selected.name : `${site} · latest scan`}</div>
+            <div className="sub">{product === 'ref' ? selected.name : 'Planned · Phase 3'}</div>
           </div>
         </div>
         <div className="radar-products">
@@ -130,30 +124,38 @@ export function Radar() {
             </button>
           ))}
         </div>
-      </div>
 
-      <div className="radar-controls">
-        {product === 'ref' ? (
-          <>
-            <button className="play" onClick={() => setPlaying((p) => !p)} aria-label={playing ? 'Pause' : 'Play'}>
-              {playing ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
-            </button>
-            <input
-              className="slider"
-              type="range"
-              min={0}
-              max={FRAMES.length - 1}
-              value={idx}
-              onChange={(e) => { setPlaying(false); setIdx(Number(e.target.value)); }}
-            />
-            <div className="stamp">{stamp}</div>
-          </>
-        ) : (
-          <div className="muted" style={{ width: '100%', textAlign: 'center', fontSize: 13 }}>
-            {meta.long} · {site} · most recent scan
+        {product !== 'ref' && (
+          <div className="radar-msg">
+            <div className="radar-msg-card">
+              <Lock size={22} />
+              <div style={{ fontWeight: 700, marginTop: 8 }}>{meta.long}</div>
+              <p>
+                Single-radar velocity &amp; correlation-coefficient are NEXRAD Level III products — there's no free
+                map layer for them. They need a small backend that decodes the raw radar feed and renders tiles, which
+                is part of the Phase 3 server work. Reflectivity is fully live now.
+              </p>
+            </div>
           </div>
         )}
       </div>
+
+      {product === 'ref' && (
+        <div className="radar-controls">
+          <button className="play" onClick={() => setPlaying((p) => !p)} aria-label={playing ? 'Pause' : 'Play'}>
+            {playing ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
+          </button>
+          <input
+            className="slider"
+            type="range"
+            min={0}
+            max={FRAMES.length - 1}
+            value={idx}
+            onChange={(e) => { setPlaying(false); setIdx(Number(e.target.value)); }}
+          />
+          <div className="stamp">{stamp}</div>
+        </div>
+      )}
     </div>
   );
 }
