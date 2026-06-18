@@ -37,17 +37,19 @@ export function Radar() {
     if (!el) return;
     let cancelled = false;
 
-    const map = L.map(el, { zoomControl: true, attributionControl: true, maxZoom: 18, minZoom: 4 }).setView(
+    const map = L.map(el, { zoomControl: true, attributionControl: true, maxZoom: 16, minZoom: 4 }).setView(
       [selected.lat, selected.lon],
       8
     );
     mapRef.current = map;
 
+    // Esri dark/light canvas — serves clean tiles to street level. (CARTO returned
+    // ~100-byte blank placeholders above ~z14, which is what greyed out / "not supported".)
     const baseUrl =
       scheme === 'dark'
-        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-        : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-    L.tileLayer(baseUrl, { maxZoom: 19, subdomains: 'abcd', attribution: '© OpenStreetMap, © CARTO' }).addTo(map);
+        ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'
+        : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+    L.tileLayer(baseUrl, { maxNativeZoom: 16, maxZoom: 16, attribution: 'Tiles © Esri' }).addTo(map);
     L.circleMarker([selected.lat, selected.lon], {
       radius: 6, color: '#fff', weight: 2.5, fillColor: '#6E8BFF', fillOpacity: 1,
     }).addTo(map);
@@ -74,7 +76,7 @@ export function Radar() {
         radarLayerRef.current = L.tileLayer(`${radar.host}${fr[start].path}/256/{z}/{x}/{y}/2/1_1.png`, {
           opacity: 0.82,
           maxNativeZoom: 10,
-          maxZoom: 18,
+          maxZoom: 16,
           zIndex: 5,
           updateWhenIdle: false,
           errorTileUrl: TRANSPARENT,
