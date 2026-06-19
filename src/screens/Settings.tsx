@@ -28,7 +28,7 @@ export function Settings() {
   const [msg, setMsg] = useState<string | null>(null);
 
   const test = async () => {
-    const ok = await notify('Nova Weather test', 'Notifications are working.');
+    const ok = await notify('Auros test', 'Notifications are working.');
     setMsg(ok ? 'Sent — check your notifications.' : 'Blocked — enable notifications in browser/site settings.');
   };
 
@@ -94,8 +94,8 @@ export function Settings() {
 
         <div className="label">About</div>
         <div className="card">
-          <div style={{ fontWeight: 600, fontSize: 17 }}>Nova Weather</div>
-          <div className="dim" style={{ fontSize: 13, marginTop: 2 }}>v0.2.0 · Phase 2</div>
+          <div style={{ fontWeight: 600, fontSize: 17 }}>Auros</div>
+          <div className="dim" style={{ fontSize: 13, marginTop: 2 }}>v0.2.0 · Phase 2 · by Meridian</div>
           <div className="muted" style={{ fontSize: 13.5, lineHeight: 1.55, marginTop: 12 }}>
             Data from the National Weather Service, SPC, and RainViewer — all free and public domain. Complements,
             does not replace, a NOAA weather radio and Wireless Emergency Alerts.

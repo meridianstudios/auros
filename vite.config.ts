@@ -11,8 +11,8 @@ export default defineConfig({
       injectRegister: 'auto',
       includeAssets: ['icon.svg'],
       manifest: {
-        name: 'Nova Weather',
-        short_name: 'NovaWx',
+        name: 'Auros',
+        short_name: 'Auros',
         description: 'Severe-weather awareness — alerts, SPC outlook, and radar.',
         theme_color: '#0B1020',
         background_color: '#0B1020',

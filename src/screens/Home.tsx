@@ -43,7 +43,7 @@ export function Home({ onNavigate, onMenu }: { onNavigate: (v: View) => void; on
   return (
     <div className="view fade">
       <div className="app-header">
-        <div className="brand"><Zap size={16} /> Nova Weather</div>
+        <div className="brand"><Zap size={16} /> Auros</div>
         <button className="icon-btn" aria-label="Menu" onClick={onMenu}><MoreHorizontal size={20} /></button>
       </div>
       <div className="hero">

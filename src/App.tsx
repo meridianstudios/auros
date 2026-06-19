@@ -43,7 +43,7 @@ function Shell() {
     <div className="app">
       <main className="main">{screen}</main>
       <nav className="tabbar">
-        <div className="nav-brand"><CloudSun size={20} /> Nova Weather</div>
+        <div className="nav-brand"><CloudSun size={20} /> Auros</div>
         {TABS.map(({ key, label, Icon }) => {
           const active = view === key || (key === 'home' && (view === 'locations' || view === 'forecast'));
           return (
