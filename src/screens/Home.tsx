@@ -138,6 +138,26 @@ export function Home({ onNavigate, onMenu }: { onNavigate: (v: View) => void; on
             </div>
           </section>
 
+          {/* 7-Day forecast */}
+          {w.daily.length > 0 && (
+            <section className="block">
+              <div className="label">7-Day Forecast</div>
+              <div className="group">
+                {w.daily.filter((p) => p.isDaytime).slice(0, 7).map((p) => {
+                  const pop = p.probabilityOfPrecipitation?.value ?? 0;
+                  return (
+                    <div className="item" key={p.startTime}>
+                      <span className="ic"><CondIcon p={p} size={20} /></span>
+                      <div className="grow"><div className="t">{p.name}</div></div>
+                      {pop >= 10 && <span className="dim" style={{ fontSize: 12, marginRight: 10 }}>{pop}%</span>}
+                      <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{convertTemp(p.temperature, u)}°</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
           {/* Active Alerts */}
           <section className="block">
             <div className="label">

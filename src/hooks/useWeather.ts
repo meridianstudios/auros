@@ -8,6 +8,7 @@ export interface UseWeather {
   point: NwsPoint | null;
   current: NwsPeriod | null;
   hourly: NwsPeriod[];
+  daily: NwsPeriod[];
   timeline: StormWindow | null;
   risk: RiskMeta | null;
   riskTomorrow: RiskMeta | null;
@@ -22,6 +23,7 @@ export function useWeather(lat: number, lon: number): UseWeather {
   const [point, setPoint] = useState<NwsPoint | null>(null);
   const [current, setCurrent] = useState<NwsPeriod | null>(null);
   const [hourly, setHourly] = useState<NwsPeriod[]>([]);
+  const [daily, setDaily] = useState<NwsPeriod[]>([]);
   const [timeline, setTimeline] = useState<StormWindow | null>(null);
   const [risk, setRisk] = useState<RiskMeta | null>(null);
   const [riskTomorrow, setRiskTomorrow] = useState<RiskMeta | null>(null);
@@ -60,6 +62,10 @@ export function useWeather(lat: number, lon: number): UseWeather {
       }
     }
 
+    if (p?.forecastUrl) {
+      try { setDaily(await getForecast(p.forecastUrl)); } catch { setDaily([]); }
+    }
+
     if (!p && al.status === 'rejected') {
       setError('Could not reach weather services. Check your connection.');
     }
@@ -68,5 +74,5 @@ export function useWeather(lat: number, lon: number): UseWeather {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  return { point, current, hourly, timeline, risk, riskTomorrow, riskError, alerts, loading, error, refresh };
+  return { point, current, hourly, daily, timeline, risk, riskTomorrow, riskError, alerts, loading, error, refresh };
 }
