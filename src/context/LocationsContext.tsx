@@ -24,7 +24,7 @@ interface LocationsValue {
 const KEY = 'nw.locations';
 const SEL = 'nw.selected';
 
-const DEFAULT: SavedLocation = { id: 'noble-twp', name: 'Noble Twp, MI', lat: 41.85, lon: -85.18 };
+const DEFAULT: SavedLocation = { id: 'miami', name: 'Miami, FL', lat: 25.7617, lon: -80.1918 };
 
 const LocationsContext = createContext<LocationsValue | undefined>(undefined);
 
