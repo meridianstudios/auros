@@ -1,5 +1,8 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { geocode } from '../api/geocode';
+import { useAuth } from './AuthContext';
+import { db } from '../lib/firebase';
 
 export interface SavedLocation {
   id: string;
@@ -45,6 +48,39 @@ export function LocationsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { localStorage.setItem(KEY, JSON.stringify(locations)); }, [locations]);
   useEffect(() => { localStorage.setItem(SEL, selectedId); }, [selectedId]);
+
+  // ---- Cloud sync (only active when signed in + Firebase configured) ----
+  const { user } = useAuth();
+  const synced = useRef(false);
+
+  // On sign-in: pull cloud copy if it exists, otherwise seed cloud from local.
+  useEffect(() => {
+    if (!user || !db) { synced.current = false; return; }
+    let active = true;
+    (async () => {
+      try {
+        const ref = doc(db, 'users', user.uid);
+        const snap = await getDoc(ref);
+        if (!active) return;
+        const data = snap.data() as { locations?: SavedLocation[]; selectedId?: string } | undefined;
+        if (data?.locations?.length) {
+          setLocations(data.locations);
+          if (data.selectedId) setSelectedId(data.selectedId);
+        } else {
+          await setDoc(ref, { locations, selectedId }, { merge: true });
+        }
+        synced.current = true;
+      } catch { /* offline / rules — stay local */ }
+    })();
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  // After cloud load, push every change up.
+  useEffect(() => {
+    if (!user || !db || !synced.current) return;
+    setDoc(doc(db, 'users', user.uid), { locations, selectedId }, { merge: true }).catch(() => {});
+  }, [locations, selectedId, user]);
 
   const add = (name: string, lat: number, lon: number) => {
     const loc: SavedLocation = { id: newId(), name, lat, lon };

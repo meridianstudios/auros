@@ -1,4 +1,7 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { useAuth } from '../context/AuthContext';
+import { db } from './firebase';
 
 export type Units = 'F' | 'C';
 export interface NotifyPrefs {
@@ -42,6 +45,37 @@ function load(): Prefs {
 export function PrefsProvider({ children }: { children: ReactNode }) {
   const [prefs, setPrefs] = useState<Prefs>(load);
   useEffect(() => { localStorage.setItem(KEY, JSON.stringify(prefs)); }, [prefs]);
+
+  // ---- Cloud sync (only active when signed in + Firebase configured) ----
+  const { user } = useAuth();
+  const synced = useRef(false);
+
+  useEffect(() => {
+    if (!user || !db) { synced.current = false; return; }
+    let active = true;
+    (async () => {
+      try {
+        const ref = doc(db, 'users', user.uid);
+        const snap = await getDoc(ref);
+        if (!active) return;
+        const data = snap.data() as { prefs?: Partial<Prefs> } | undefined;
+        if (data?.prefs) {
+          const p = data.prefs;
+          setPrefs({ ...DEFAULT, ...p, notify: { ...DEFAULT.notify, ...p.notify }, quiet: { ...DEFAULT.quiet, ...p.quiet } });
+        } else {
+          await setDoc(ref, { prefs }, { merge: true });
+        }
+        synced.current = true;
+      } catch { /* offline / rules — stay local */ }
+    })();
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || !db || !synced.current) return;
+    setDoc(doc(db, 'users', user.uid), { prefs }, { merge: true }).catch(() => {});
+  }, [prefs, user]);
 
   const value = useMemo<PrefsValue>(() => ({
     prefs,

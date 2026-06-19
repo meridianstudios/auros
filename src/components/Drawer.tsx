@@ -1,10 +1,13 @@
-import { X, MapPin, CalendarDays, Bell, Info, Moon, Sun, User } from 'lucide-react';
+import { X, MapPin, CalendarDays, Bell, Info, Moon, Sun, User, LogIn, LogOut } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import type { View } from '../nav';
 
 export function Drawer({ open, onClose, onNavigate }: { open: boolean; onClose: () => void; onNavigate: (v: View) => void }) {
   const { scheme, setScheme } = useTheme();
+  const { ready, user, logout } = useAuth();
   const go = (v: View) => { onNavigate(v); onClose(); };
+  const initial = (user?.displayName || user?.email || '?').charAt(0).toUpperCase();
 
   return (
     <>
@@ -15,19 +18,33 @@ export function Drawer({ open, onClose, onNavigate }: { open: boolean; onClose: 
           <button className="icon-btn" onClick={onClose} aria-label="Close menu"><X size={20} /></button>
         </div>
 
-        {/* Account section — placeholder until auth (Phase 3) lands here. */}
-        <div className="drawer-acct">
-          <span className="av"><User size={18} /></span>
-          <div>
-            <div style={{ fontWeight: 500 }}>Guest</div>
-            <div className="muted" style={{ fontSize: 13 }}>Sign in — coming soon</div>
+        {user ? (
+          <div className="drawer-acct">
+            <span className="av" style={{ fontWeight: 600 }}>{initial}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.displayName || 'Signed in'}</div>
+              <div className="muted" style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.email}</div>
+            </div>
           </div>
-        </div>
+        ) : ready ? (
+          <button className="drawer-acct" style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }} onClick={() => go('signin')}>
+            <span className="av"><LogIn size={18} /></span>
+            <div><div style={{ fontWeight: 500 }}>Sign in</div><div className="muted" style={{ fontSize: 13 }}>Save &amp; sync your places</div></div>
+          </button>
+        ) : (
+          <div className="drawer-acct">
+            <span className="av"><User size={18} /></span>
+            <div><div style={{ fontWeight: 500 }}>Guest</div><div className="muted" style={{ fontSize: 13 }}>Local only</div></div>
+          </div>
+        )}
 
         <button className="drawer-item" onClick={() => go('locations')}><MapPin size={19} /> Locations</button>
         <button className="drawer-item" onClick={() => go('forecast')}><CalendarDays size={19} /> Full forecast</button>
         <button className="drawer-item" onClick={() => go('alerts')}><Bell size={19} /> Alerts</button>
         <button className="drawer-item" onClick={() => go('settings')}><Info size={19} /> Settings &amp; about</button>
+        {user && (
+          <button className="drawer-item" onClick={async () => { await logout(); onClose(); }}><LogOut size={19} /> Sign out</button>
+        )}
 
         <div className="drawer-seg">
           <div className="seg">

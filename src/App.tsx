@@ -12,6 +12,8 @@ import { Locations } from './screens/Locations';
 import { Settings } from './screens/Settings';
 import { Forecast } from './screens/Forecast';
 import { Drawer } from './components/Drawer';
+import { SignIn } from './screens/SignIn';
+import { AuthProvider } from './context/AuthContext';
 
 const TABS: { key: View; label: string; Icon: typeof House }[] = [
   { key: 'home', label: 'Home', Icon: House },
@@ -34,6 +36,7 @@ function Shell() {
     : view === 'settings' ? <Settings />
     : view === 'locations' ? <Locations />
     : view === 'forecast' ? <Forecast />
+    : view === 'signin' ? <SignIn onNavigate={setView} />
     : <Home onNavigate={setView} onMenu={openMenu} />;
 
   return (
@@ -59,11 +62,13 @@ function Shell() {
 export default function App() {
   return (
     <ThemeProvider>
-      <PrefsProvider>
-        <LocationsProvider>
-          <Shell />
-        </LocationsProvider>
-      </PrefsProvider>
+      <AuthProvider>
+        <PrefsProvider>
+          <LocationsProvider>
+            <Shell />
+          </LocationsProvider>
+        </PrefsProvider>
+      </AuthProvider>
     </ThemeProvider>
   );
 }
