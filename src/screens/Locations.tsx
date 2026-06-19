@@ -1,24 +1,35 @@
-import { useState } from 'react';
-import { CircleCheck, Circle, Trash2, Navigation, Search } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { CircleCheck, Circle, Trash2, Navigation, MapPin } from 'lucide-react';
 import { useLocations } from '../context/LocationsContext';
+import { searchPlaces, type GeocodeResult } from '../api/geocode';
 
 export function Locations() {
-  const { locations, selectedId, select, remove, addByCurrentPosition, addByName } = useLocations();
+  const { locations, selectedId, select, remove, addByCurrentPosition, addPlace } = useLocations();
   const [query, setQuery] = useState('');
+  const [results, setResults] = useState<GeocodeResult[]>([]);
   const [busy, setBusy] = useState<null | 'gps' | 'search'>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const timer = useRef<number | undefined>(undefined);
 
   const useGps = async () => {
     setBusy('gps'); setMsg(null);
     try { await addByCurrentPosition(); } catch (e: any) { setMsg(e?.message ?? 'Could not get location'); }
     finally { setBusy(null); }
   };
-  const search = async () => {
-    if (!query.trim()) return;
-    setBusy('search'); setMsg(null);
-    try { await addByName(query.trim()); setQuery(''); } catch (e: any) { setMsg(e?.message ?? 'No match'); }
-    finally { setBusy(null); }
+
+  const onQuery = (v: string) => {
+    setQuery(v); setMsg(null);
+    window.clearTimeout(timer.current);
+    if (v.trim().length < 2) { setResults([]); setBusy(null); return; }
+    setBusy('search');
+    timer.current = window.setTimeout(async () => {
+      try { setResults(await searchPlaces(v.trim())); }
+      catch { setResults([]); }
+      finally { setBusy(null); }
+    }, 250);
   };
+
+  const pick = (r: GeocodeResult) => { addPlace(r); setQuery(''); setResults([]); };
 
   return (
     <div className="view fade">
@@ -57,19 +68,26 @@ export function Locations() {
           <button className="btn btn-primary" onClick={useGps} disabled={busy === 'gps'}>
             <Navigation size={16} /> {busy === 'gps' ? 'Locating…' : 'Use my current location'}
           </button>
-          <div className="dim" style={{ fontSize: 13, margin: '16px 0 8px' }}>Or search by city / place</div>
-          <div className="row">
-            <input
-              className="input"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="e.g. Kalamazoo, MI"
-              onKeyDown={(e) => e.key === 'Enter' && search()}
-            />
-            <button className="btn btn-ghost" style={{ width: 52, flex: 'none' }} onClick={search} disabled={busy === 'search'} aria-label="Search">
-              <Search size={18} />
-            </button>
-          </div>
+          <div className="dim" style={{ fontSize: 13, margin: '16px 0 8px' }}>Or search a city, place, or address</div>
+          <input
+            className="input"
+            value={query}
+            onChange={(e) => onQuery(e.target.value)}
+            placeholder="Start typing… e.g. Kalamazoo"
+            onKeyDown={(e) => { if (e.key === 'Enter' && results[0]) pick(results[0]); }}
+            autoComplete="off"
+          />
+          {busy === 'search' && <div className="dim" style={{ fontSize: 13, marginTop: 8 }}>Searching…</div>}
+          {results.length > 0 && (
+            <div className="group" style={{ marginTop: 10 }}>
+              {results.map((r, i) => (
+                <button key={`${r.lat},${r.lon},${i}`} className="item" style={{ width: '100%', textAlign: 'left' }} onClick={() => pick(r)}>
+                  <span className="ic"><MapPin size={18} /></span>
+                  <span className="grow"><span className="t">{r.name}</span></span>
+                </button>
+              ))}
+            </div>
+          )}
           {msg && <div style={{ color: 'var(--danger)', fontSize: 13, marginTop: 10 }}>{msg}</div>}
         </div>
       </div>

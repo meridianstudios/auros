@@ -18,6 +18,7 @@ interface LocationsValue {
   select: (id: string) => void;
   addByCurrentPosition: () => Promise<void>;
   addByName: (query: string) => Promise<void>;
+  addPlace: (r: { name: string; lat: number; lon: number }) => void;
   remove: (id: string) => void;
 }
 
@@ -118,7 +119,7 @@ export function LocationsProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<LocationsValue>(
-    () => ({ locations, selected, selectedId: selected?.id ?? '', select: setSelectedId, addByCurrentPosition, addByName, remove }),
+    () => ({ locations, selected, selectedId: selected?.id ?? '', select: setSelectedId, addByCurrentPosition, addByName, addPlace: (r) => add(r.name, r.lat, r.lon), remove }),
     [locations, selected]
   );
 
