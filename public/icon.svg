@@ -2,16 +2,19 @@
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#0B1020"/>
-      <stop offset="1" stop-color="#1E2742"/>
+      <stop offset="1" stop-color="#3A3F73"/>
+    </linearGradient>
+    <linearGradient id="bolt" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#A9B8FF"/>
+      <stop offset="1" stop-color="#6E8BFF"/>
     </linearGradient>
   </defs>
-  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <path d="M186 300a66 66 0 0 1 6-131 92 92 0 0 1 176 24 58 58 0 0 1-12 115z"
-        fill="#7C8CFF"/>
-  <g stroke="#22D3EE" stroke-width="20" stroke-linecap="round">
-    <line x1="206" y1="330" x2="184" y2="386"/>
-    <line x1="270" y1="330" x2="248" y2="386"/>
-    <line x1="334" y1="330" x2="312" y2="386"/>
+  <rect width="512" height="512" rx="116" fill="url(#bg)"/>
+  <g fill="none" stroke="#22D3EE" stroke-opacity="0.16" stroke-width="6">
+    <circle cx="256" cy="256" r="76"/>
+    <circle cx="256" cy="256" r="136"/>
+    <circle cx="256" cy="256" r="196"/>
   </g>
-  <path d="M300 318l-34 60h34l-30 64 78-92h-36z" fill="#FBBF24"/>
+  <path d="M256 256 L256 60 A196 196 0 0 1 422 162 Z" fill="#22D3EE" fill-opacity="0.10"/>
+  <path d="M288 70 L168 288 L242 288 L214 442 L352 246 L272 246 Z" fill="url(#bolt)"/>
 </svg>

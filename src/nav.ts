@@ -1,1 +1,1 @@
-export type View = 'home' | 'radar' | 'alerts' | 'nwr' | 'settings' | 'locations';
+export type View = 'home' | 'radar' | 'alerts' | 'nwr' | 'settings' | 'locations' | 'forecast';

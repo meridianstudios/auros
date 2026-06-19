@@ -86,3 +86,19 @@ export async function getForecast(url: string): Promise<NwsPeriod[]> {
   const data = await getJson(url);
   return data.properties?.periods ?? [];
 }
+
+export interface AlertGeometry { id: string; event: string; severity?: string; geometry: unknown }
+
+// Active alerts that carry a polygon, for drawing on the radar map.
+export async function getAlertGeometries(lat: number, lon: number): Promise<AlertGeometry[]> {
+  const data = await getJson(`${BASE}/alerts/active?point=${round4(lat)},${round4(lon)}`);
+  const feats = Array.isArray(data.features) ? data.features : [];
+  return feats
+    .filter((f: any) => f.geometry)
+    .map((f: any) => ({
+      id: f.id ?? Math.random().toString(36),
+      event: f.properties?.event ?? 'Alert',
+      severity: f.properties?.severity,
+      geometry: f.geometry,
+    }));
+}

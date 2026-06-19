@@ -3,6 +3,8 @@ import L from 'leaflet';
 import { Play, Pause, Lock } from 'lucide-react';
 import { useLocations } from '../context/LocationsContext';
 import { useTheme } from '../theme/ThemeContext';
+import { getAlertGeometries } from '../api/nws';
+import { severityColor } from '../theme/colors';
 
 const TRANSPARENT =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/QBYAAAAAElFTkSuQmCC';
@@ -39,6 +41,7 @@ export function Radar() {
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
+    let cancelled = false;
 
     const map = L.map(el, { zoomControl: true, attributionControl: true, maxZoom: 16, minZoom: 4 }).setView(
       [selected.lat, selected.lon],
@@ -72,7 +75,21 @@ export function Radar() {
       attribution: 'NEXRAD: NWS / Iowa Environmental Mesonet',
     }).addTo(map);
 
+    // Overlay active warning/watch polygons, colored by severity.
+    getAlertGeometries(selected.lat, selected.lon)
+      .then((alerts) => {
+        if (cancelled) return;
+        alerts.forEach((a) => {
+          const c = severityColor(a.severity, a.event);
+          L.geoJSON(a.geometry as never, { style: { color: c, weight: 2, fillColor: c, fillOpacity: 0.12 } })
+            .bindPopup(`<b>${a.event}</b>`)
+            .addTo(map);
+        });
+      })
+      .catch(() => {});
+
     return () => {
+      cancelled = true;
       clearTimeout(t1);
       clearTimeout(t2);
       ro.disconnect();
@@ -108,7 +125,7 @@ export function Radar() {
   const meta = PRODUCTS.find((p) => p.key === product)!;
 
   return (
-    <div className="view fade" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
+    <div className="view radar-view fade" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
       <div className="radar-stage">
         <div id="radar-map" ref={containerRef} />
         <div className="radar-float">

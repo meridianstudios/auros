@@ -41,8 +41,10 @@ input { font-family: inherit; }
   height: 100%; width: 100%; max-width: var(--maxw);
   margin: 0 auto; position: relative; background: var(--bg);
 }
-.view { flex: 1; overflow-y: auto; padding-bottom: calc(var(--tab-h) + env(safe-area-inset-bottom) + 8px); }
-.view::-webkit-scrollbar { width: 0; }
+.main { flex: 1; min-height: 0; overflow-y: auto; position: relative; }
+.main::-webkit-scrollbar { width: 0; }
+.nav-brand { display: none; }
+.view { min-height: 100%; }
 .pad { padding: 0 20px; }
 
 /* ---- Typography ---- */
@@ -119,10 +121,9 @@ input { font-family: inherit; }
 .radar-ts { font-variant-numeric: tabular-nums; font-weight: 600; font-size: 13px; }
 /* Radar playback controls */
 .radar-controls {
-  position: fixed; bottom: calc(var(--tab-h) + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
-  width: 100%; max-width: var(--maxw); z-index: 650;
+  flex: none; z-index: 5;
   display: flex; align-items: center; gap: 14px; padding: 12px 18px;
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
   backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
   border-top: 1px solid var(--border);
 }
@@ -150,15 +151,15 @@ input[type="range"].slider::-moz-range-thumb { width: 16px; height: 16px; border
 .radar-msg-card { background: color-mix(in srgb, var(--bg) 90%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid var(--border); border-radius: 18px; padding: 22px; max-width: 320px; text-align: center; box-shadow: 0 14px 44px -12px var(--shadow); }
 .radar-msg-card svg { color: var(--text-muted); }
 .radar-msg-card p { color: var(--text-muted); font-size: 13px; line-height: 1.55; margin: 8px 0 0; }
+
 .leaflet-control-attribution { font-size: 9px !important; background: rgba(0,0,0,0.4) !important; color: #aaa !important; }
 .leaflet-bar a { background: var(--surface) !important; color: var(--text) !important; border-color: var(--border) !important; }
 
 /* ---- Tab bar ---- */
 .tabbar {
-  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
-  width: 100%; max-width: var(--maxw); z-index: 700;
+  flex: none; z-index: 10;
   display: flex; height: calc(var(--tab-h) + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom);
-  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
   backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
   border-top: 1px solid var(--border);
 }
@@ -196,3 +197,27 @@ input[type="range"].slider::-moz-range-thumb { width: 16px; height: 16px; border
 
 /* Hour select */
 .hsel { background: var(--surface-alt); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 7px 8px; font-size: 14px; font-weight: 600; }
+
+/* ===== Desktop / tablet: sidebar nav + wider content (must stay last to win the cascade) ===== */
+@media (min-width: 860px) {
+  .app { flex-direction: row; max-width: none; }
+  .nav-brand {
+    display: flex; align-items: center; gap: 9px;
+    font-weight: 800; font-size: 17px; letter-spacing: -0.2px;
+    padding: 8px 14px 20px; color: var(--text);
+  }
+  .nav-brand svg { color: var(--primary); }
+  .tabbar {
+    order: -1; flex-direction: column; width: 244px; height: 100%;
+    padding: 22px 12px; gap: 4px; justify-content: flex-start;
+    border-top: none; border-right: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .tab {
+    flex: none; flex-direction: row; justify-content: flex-start;
+    gap: 14px; padding: 12px 14px; border-radius: 12px; font-size: 15px; font-weight: 600;
+  }
+  .tab.active { background: color-mix(in srgb, var(--primary) 14%, transparent); }
+  .view { max-width: 760px; margin: 0 auto; }
+  .radar-view { max-width: 1100px; }
+}

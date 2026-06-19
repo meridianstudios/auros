@@ -1,31 +1,14 @@
 import { useEffect, useRef } from 'react';
-import {
-  MapPin, ChevronDown, ChevronRight, ShieldCheck, CloudLightning,
-  Sun, Moon, Cloud, CloudSun, CloudMoon, CloudRain, CloudDrizzle, CloudSnow, CloudFog,
-} from 'lucide-react';
+import { MapPin, ChevronDown, ChevronRight, ShieldCheck, CloudLightning } from 'lucide-react';
 import { useLocations } from '../context/LocationsContext';
 import { useWeather } from '../hooks/useWeather';
 import { usePrefs, convertTemp, shouldNotifyAlert, isQuietNow } from '../lib/prefs';
 import { RiskBadge } from '../components/RiskBadge';
 import { AlertCard } from '../components/AlertCard';
+import { CondIcon } from '../components/CondIcon';
 import { notify } from '../lib/notify';
 import { formatTime } from '../utils/format';
-import type { NwsPeriod } from '../api/nws';
 import type { View } from '../nav';
-
-function CondIcon({ p, size = 20 }: { p: NwsPeriod; size?: number }) {
-  const s = (p.shortForecast || '').toLowerCase();
-  const day = p.isDaytime !== false;
-  const props = { size, color: 'var(--text-muted)' };
-  if (/thunder|t-storm/.test(s)) return <CloudLightning {...props} />;
-  if (/snow|sleet|ice|wintry/.test(s)) return <CloudSnow {...props} />;
-  if (/drizzle/.test(s)) return <CloudDrizzle {...props} />;
-  if (/rain|shower/.test(s)) return <CloudRain {...props} />;
-  if (/fog|haze|mist/.test(s)) return <CloudFog {...props} />;
-  if (/cloud|overcast/.test(s)) return /partly|mostly sunny|few/.test(s) ? (day ? <CloudSun {...props} /> : <CloudMoon {...props} />) : <Cloud {...props} />;
-  if (/sun|clear/.test(s)) return day ? <Sun {...props} /> : <Moon {...props} />;
-  return day ? <CloudSun {...props} /> : <CloudMoon {...props} />;
-}
 
 export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
   const { selected } = useLocations();
@@ -105,7 +88,12 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
         {/* Hourly strip */}
         {w.hourly.length > 0 && (
           <>
-            <div className="label">Hourly</div>
+            <div className="label">
+              <span>Hourly</span>
+              <button className="dim" style={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: 11, fontWeight: 600, letterSpacing: 0.7 }} onClick={() => onNavigate('forecast')}>
+                FULL FORECAST <ChevronRight size={13} />
+              </button>
+            </div>
             <div className="hourly">
               {w.hourly.slice(0, 12).map((h) => {
                 const pop = h.probabilityOfPrecipitation?.value ?? 0;
