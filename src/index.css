@@ -41,6 +41,7 @@ input { font-family: inherit; }
   display: flex; flex-direction: column;
   height: 100%; width: 100%; max-width: var(--maxw);
   margin: 0 auto; position: relative; background: var(--bg);
+  overflow: hidden; /* clip the off-canvas drawer so it can't create horizontal scroll */
 }
 .main { flex: 1; min-height: 0; overflow-y: auto; position: relative; }
 .main::-webkit-scrollbar { width: 0; }
