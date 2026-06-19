@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { MapPin, ChevronDown, ChevronRight, ShieldCheck, CloudLightning } from 'lucide-react';
+import { MapPin, ChevronDown, ChevronRight, ShieldCheck, CloudLightning, Zap, MoreHorizontal } from 'lucide-react';
 import { useLocations } from '../context/LocationsContext';
 import { useWeather } from '../hooks/useWeather';
 import { usePrefs, convertTemp, shouldNotifyAlert, isQuietNow } from '../lib/prefs';
@@ -10,7 +10,7 @@ import { notify } from '../lib/notify';
 import { formatTime } from '../utils/format';
 import type { View } from '../nav';
 
-export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
+export function Home({ onNavigate, onMenu }: { onNavigate: (v: View) => void; onMenu: () => void }) {
   const { selected } = useLocations();
   const { prefs } = usePrefs();
   const w = useWeather(selected.lat, selected.lon);
@@ -42,12 +42,21 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
 
   return (
     <div className="view fade">
+      <div className="app-header">
+        <div className="brand"><Zap size={16} /> Nova Weather</div>
+        <button className="icon-btn" aria-label="Menu" onClick={onMenu}><MoreHorizontal size={20} /></button>
+      </div>
       <div className="hero">
         <button className="place" onClick={() => onNavigate('locations')}>
-          <MapPin size={15} /> {place} <ChevronDown size={14} style={{ opacity: 0.5 }} />
+          <MapPin size={14} /> {place} <ChevronDown size={13} style={{ opacity: 0.5 }} />
         </button>
-        <div className="temp">{w.current ? `${convertTemp(w.current.temperature, u)}°` : '—'}</div>
-        <div className="cond">{w.current?.shortForecast ?? (w.loading ? 'Updating…' : 'Unavailable')}</div>
+        <div className="hero-row">
+          <div>
+            <div className="temp">{w.current ? `${convertTemp(w.current.temperature, u)}°` : '—'}</div>
+            <div className="cond">{w.current?.shortForecast ?? (w.loading ? 'Updating…' : 'Unavailable')}</div>
+          </div>
+          {w.current && <span className="hero-ic"><CondIcon p={w.current} size={46} color="var(--primary)" /></span>}
+        </div>
         {w.current && (
           <div className="meta">
             Wind {w.current.windDirection} {w.current.windSpeed}

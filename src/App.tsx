@@ -11,6 +11,7 @@ import { Nwr } from './screens/Nwr';
 import { Locations } from './screens/Locations';
 import { Settings } from './screens/Settings';
 import { Forecast } from './screens/Forecast';
+import { Drawer } from './components/Drawer';
 
 const TABS: { key: View; label: string; Icon: typeof House }[] = [
   { key: 'home', label: 'Home', Icon: House },
@@ -22,16 +23,18 @@ const TABS: { key: View; label: string; Icon: typeof House }[] = [
 
 function Shell() {
   const [view, setView] = useState<View>('home');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const openMenu = () => setMenuOpen(true);
 
   const screen =
-    view === 'home' ? <Home onNavigate={setView} />
+    view === 'home' ? <Home onNavigate={setView} onMenu={openMenu} />
     : view === 'radar' ? <Radar />
     : view === 'alerts' ? <Alerts />
     : view === 'nwr' ? <Nwr />
     : view === 'settings' ? <Settings />
     : view === 'locations' ? <Locations />
     : view === 'forecast' ? <Forecast />
-    : <Home onNavigate={setView} />;
+    : <Home onNavigate={setView} onMenu={openMenu} />;
 
   return (
     <div className="app">
@@ -48,6 +51,7 @@ function Shell() {
           );
         })}
       </nav>
+      <Drawer open={menuOpen} onClose={() => setMenuOpen(false)} onNavigate={setView} />
     </div>
   );
 }
