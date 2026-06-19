@@ -41,7 +41,7 @@ export function Home({ onNavigate, onMenu }: { onNavigate: (v: View) => void; on
   const tl = w.timeline;
 
   return (
-    <div className="view fade">
+    <div className="view fade home-view">
       <div className="app-header">
         <div className="brand"><Zap size={16} /> Auros</div>
         <button className="icon-btn" aria-label="Menu" onClick={onMenu}><MoreHorizontal size={20} /></button>
@@ -58,9 +58,14 @@ export function Home({ onNavigate, onMenu }: { onNavigate: (v: View) => void; on
           {w.current && <span className="hero-ic"><CondIcon p={w.current} size={46} color="var(--primary)" /></span>}
         </div>
         {w.current && (
-          <div className="meta">
-            Wind {w.current.windDirection} {w.current.windSpeed}
-            {w.current.probabilityOfPrecipitation?.value != null ? `  ·  ${w.current.probabilityOfPrecipitation.value}% precip` : ''}
+          <div className="hero-stats">
+            <div className="hstat"><span className="hk">Wind</span><span className="hv">{w.current.windDirection} {w.current.windSpeed}</span></div>
+            {w.current.probabilityOfPrecipitation?.value != null && (
+              <div className="hstat"><span className="hk">Precip</span><span className="hv">{w.current.probabilityOfPrecipitation.value}%</span></div>
+            )}
+            {w.riskTomorrow && (
+              <div className="hstat"><span className="hk">Tomorrow</span><span className="hv">{w.riskTomorrow.full}</span></div>
+            )}
           </div>
         )}
       </div>
@@ -76,25 +81,7 @@ export function Home({ onNavigate, onMenu }: { onNavigate: (v: View) => void; on
           </>
         )}
 
-        {/* Storm-approach timeline — the Phase 2 headline */}
-        {tl && (
-          <>
-            <div className="label">Storm Timeline</div>
-            <div className="card timeline-card">
-              <span className="tl-ic"><CloudLightning size={22} /></span>
-              <div>
-                <div className="tl-title">
-                  {tl.startIso === tl.endIso
-                    ? `Storms likely around ${formatTime(tl.startIso)}`
-                    : `Storms likely ${formatTime(tl.startIso)} – ${formatTime(tl.endIso)}`}
-                </div>
-                <div className="tl-sub">Peak around {formatTime(tl.peakIso)} · {tl.peakPop}% chance</div>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Hourly strip */}
+        {/* Hourly strip — full-width band */}
         {w.hourly.length > 0 && (
           <>
             <div className="label">
@@ -119,37 +106,63 @@ export function Home({ onNavigate, onMenu }: { onNavigate: (v: View) => void; on
           </>
         )}
 
-        <div className="label">Severe Outlook</div>
-        <div className="card">
-          <RiskBadge risk={w.risk} error={w.riskError} />
-          {w.riskTomorrow && (
-            <div className="muted" style={{ fontSize: 13, marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-              Tomorrow · <span style={{ color: 'var(--text)' }}>{w.riskTomorrow.full} Risk</span>
-            </div>
-          )}
-        </div>
-
-        <div className="label">
-          <span>Active Alerts{w.alerts.length ? ` · ${w.alerts.length}` : ''}</span>
-          {w.alerts.length > 0 && (
-            <button className="dim" style={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: 11, fontWeight: 600, letterSpacing: 0.7 }} onClick={() => onNavigate('alerts')}>
-              SEE ALL <ChevronRight size={13} />
-            </button>
-          )}
-        </div>
-        {w.alerts.length === 0 ? (
-          <div className="group">
-            <div className="item">
-              <span className="ic" style={{ color: 'var(--success)' }}><ShieldCheck size={19} /></span>
-              <div className="grow">
-                <div className="t">All clear</div>
-                <div className="s">No watches, warnings, or advisories.</div>
+        <div className="dash">
+          {/* Storm-approach timeline — the Phase 2 headline */}
+          {tl && (
+            <section className="block">
+              <div className="label">Storm Timeline</div>
+              <div className="card timeline-card">
+                <span className="tl-ic"><CloudLightning size={22} /></span>
+                <div>
+                  <div className="tl-title">
+                    {tl.startIso === tl.endIso
+                      ? `Storms likely around ${formatTime(tl.startIso)}`
+                      : `Storms likely ${formatTime(tl.startIso)} – ${formatTime(tl.endIso)}`}
+                  </div>
+                  <div className="tl-sub">Peak around {formatTime(tl.peakIso)} · {tl.peakPop}% chance</div>
+                </div>
               </div>
+            </section>
+          )}
+
+          {/* Severe Outlook */}
+          <section className="block">
+            <div className="label">Severe Outlook</div>
+            <div className="card">
+              <RiskBadge risk={w.risk} error={w.riskError} />
+              {w.riskTomorrow && (
+                <div className="muted" style={{ fontSize: 13, marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+                  Tomorrow · <span style={{ color: 'var(--text)' }}>{w.riskTomorrow.full} Risk</span>
+                </div>
+              )}
             </div>
-          </div>
-        ) : (
-          w.alerts.slice(0, 3).map((a) => <AlertCard key={a.id} alert={a} onClick={() => onNavigate('alerts')} />)
-        )}
+          </section>
+
+          {/* Active Alerts */}
+          <section className="block">
+            <div className="label">
+              <span>Active Alerts{w.alerts.length ? ` · ${w.alerts.length}` : ''}</span>
+              {w.alerts.length > 0 && (
+                <button className="dim" style={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: 11, fontWeight: 600, letterSpacing: 0.7 }} onClick={() => onNavigate('alerts')}>
+                  SEE ALL <ChevronRight size={13} />
+                </button>
+              )}
+            </div>
+            {w.alerts.length === 0 ? (
+              <div className="group">
+                <div className="item">
+                  <span className="ic" style={{ color: 'var(--success)' }}><ShieldCheck size={19} /></span>
+                  <div className="grow">
+                    <div className="t">All clear</div>
+                    <div className="s">No watches, warnings, or advisories.</div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              w.alerts.slice(0, 3).map((a) => <AlertCard key={a.id} alert={a} onClick={() => onNavigate('alerts')} />)
+            )}
+          </section>
+        </div>
       </div>
     </div>
   );
