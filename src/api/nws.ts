@@ -87,7 +87,17 @@ export async function getForecast(url: string): Promise<NwsPeriod[]> {
   return data.properties?.periods ?? [];
 }
 
-export interface AlertGeometry { id: string; event: string; severity?: string; geometry: unknown }
+export interface AlertGeometry {
+  id: string;
+  event: string;
+  severity?: string;
+  geometry: unknown;
+  headline?: string;
+  areaDesc?: string;
+  expires?: string; // ISO
+  instruction?: string;
+  description?: string;
+}
 
 // Active-alert areas for drawing on the radar map. Storm-based alerts (tornado,
 // severe t-storm) carry a polygon directly; most others (advisories, watches,
@@ -121,13 +131,21 @@ export async function getAlertGeometries(lat: number, lon: number): Promise<Aler
   for (const f of feats) {
     const p = f.properties ?? {};
     const event = p.event ?? 'Alert';
-    const severity = p.severity;
+    const meta = {
+      event,
+      severity: p.severity,
+      headline: p.headline,
+      areaDesc: p.areaDesc,
+      expires: p.expires,
+      instruction: p.instruction,
+      description: p.description,
+    };
     if (f.geometry) {
-      out.push({ id: f.id ?? Math.random().toString(36), event, severity, geometry: f.geometry });
+      out.push({ id: f.id ?? Math.random().toString(36), geometry: f.geometry, ...meta });
     } else {
       for (const z of p.affectedZones ?? []) {
         const g = zoneGeom.get(z);
-        if (g) out.push({ id: `${f.id ?? event}:${z}`, event, severity, geometry: g });
+        if (g) out.push({ id: `${f.id ?? event}:${z}`, geometry: g, ...meta });
       }
     }
   }
@@ -142,10 +160,18 @@ export async function getActiveWarnings(): Promise<AlertGeometry[]> {
   const feats = Array.isArray(data.features) ? data.features : [];
   return feats
     .filter((f: any) => f.geometry)
-    .map((f: any) => ({
-      id: f.id ?? Math.random().toString(36),
-      event: f.properties?.event ?? 'Alert',
-      severity: f.properties?.severity,
-      geometry: f.geometry,
-    }));
+    .map((f: any) => {
+      const p = f.properties ?? {};
+      return {
+        id: f.id ?? Math.random().toString(36),
+        event: p.event ?? 'Alert',
+        severity: p.severity,
+        geometry: f.geometry,
+        headline: p.headline,
+        areaDesc: p.areaDesc,
+        expires: p.expires,
+        instruction: p.instruction,
+        description: p.description,
+      } as AlertGeometry;
+    });
 }

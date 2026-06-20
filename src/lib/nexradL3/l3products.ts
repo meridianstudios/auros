@@ -33,24 +33,29 @@ function reflColor(dbz: number): string | null {
   return c;
 }
 
-// ---- Velocity (N0G) — diverging: inbound (toward radar, negative) green,
-// outbound (positive) red, near-zero dark ----
+// ---- Velocity (N0G) — diverging with a GREY center (like Supercell-Wx):
+// calm / inbound-meets-outbound reads neutral grey, and only strong motion
+// saturates to green (toward radar) / red (away). Makes rotation couplets pop
+// instead of the whole disc being a green/red wash. ----
+const VEL_BASE = 105; // neutral grey for weak / transition velocities
+const VEL_MAX = 48; // m/s at which color is fully saturated
 function velColor(ms: number): string | null {
-  if (Math.abs(ms) < 1) return null; // suppress near-zero clutter
-  const a = Math.min(Math.abs(ms) / 50, 1);
-  if (ms <= 0) {
-    return `rgb(${Math.round(15 * (1 - a))},${Math.round(70 + 185 * a)},${Math.round(45 * (1 - a))})`;
-  }
-  return `rgb(${Math.round(70 + 185 * a)},${Math.round(28 * (1 - a))},${Math.round(28 * (1 - a))})`;
+  const a = Math.min(Math.abs(ms) / VEL_MAX, 1);
+  const side = Math.round(VEL_BASE * (1 - a));
+  const main = Math.round(VEL_BASE + (240 - VEL_BASE) * a);
+  if (ms < 0) return `rgb(${side},${main},${side})`; // inbound -> green
+  return `rgb(${main},${side},${side})`; // outbound -> red
 }
 
-// ---- Storm-relative velocity (N0S) — 16 run-length levels, diverging ----
+// ---- Storm-relative velocity (N0S) — 16 run-length levels, grey-centered ----
 function srvColor(level: number): string | null {
   if (level === 0) return null;
   if (level >= 15) return '#9b30ff'; // range folding
   const a = Math.abs(level - 8) / 7;
-  if (level < 8) return `rgb(${Math.round(15 * (1 - a))},${Math.round(80 + 175 * a)},45)`;
-  return `rgb(${Math.round(80 + 175 * a)},30,30)`;
+  const side = Math.round(VEL_BASE * (1 - a));
+  const main = Math.round(VEL_BASE + (240 - VEL_BASE) * a);
+  if (level < 8) return `rgb(${side},${main},${side})`;
+  return `rgb(${main},${side},${side})`;
 }
 
 // ---- Hydrometeor classification (N0H) — categorical. Decoded values are
@@ -71,7 +76,7 @@ function hydroColor(v: number): string | null {
 export const L3_PRODUCTS: Record<string, L3ProductDef> = {
   velocity: {
     key: 'velocity', label: 'Velocity', short: 'V', prod: 'N0G', kind: 'value',
-    units: 'kt', legend: 'Green = toward radar · Red = away — tight green/red pair = rotation',
+    units: 'kt', legend: 'Grey = calm · green = toward radar · red = away — a tight green/red pair is rotation',
     display: (v) => v * 1.94384, color: velColor,
   },
   srv: {

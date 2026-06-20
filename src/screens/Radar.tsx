@@ -4,7 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import { Play, Pause, Cloud, Loader } from 'lucide-react';
 import { useLocations } from '../context/LocationsContext';
 import { useTheme } from '../theme/ThemeContext';
-import { getAlertGeometries, getActiveWarnings } from '../api/nws';
+import { getAlertGeometries, getActiveWarnings, type AlertGeometry } from '../api/nws';
 import { severityColor } from '../theme/colors';
 import { useTropical } from '../hooks/useTropical';
 import { category, catColor } from '../api/tropical';
@@ -41,6 +41,30 @@ const ALERT_REFRESH_MS = 120_000; // re-fetch alert overlays every 2 min
 const L3_REFRESH_MS = 150_000; // re-fetch the latest L3 scan every ~2.5 min
 
 type L3State = { status: 'idle' | 'loading' | 'ok' | 'error'; site?: string; time?: Date; msg?: string };
+
+const escHtml = (s?: string): string =>
+  (s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
+
+const fmtUntil = (iso?: string): string => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+};
+
+// Supercell-Wx-style alert detail popup: event, headline, area, expiry, and the
+// call-to-action instruction.
+function alertPopupHtml(a: AlertGeometry, color: string): string {
+  const until = fmtUntil(a.expires);
+  return (
+    `<div class="alert-popup">` +
+    `<div class="ap-event" style="color:${color}">${escHtml(a.event)}</div>` +
+    (a.headline ? `<div class="ap-headline">${escHtml(a.headline)}</div>` : '') +
+    (a.areaDesc ? `<div class="ap-area">${escHtml(a.areaDesc)}</div>` : '') +
+    (until ? `<div class="ap-until">In effect until ${until}</div>` : '') +
+    (a.instruction ? `<div class="ap-instruction">${escHtml(a.instruction)}</div>` : '') +
+    `</div>`
+  );
+}
 
 export function Radar() {
   const { selected } = useLocations();
@@ -115,10 +139,10 @@ export function Radar() {
       ]);
       if (cancelled) return;
       alertGroup.clearLayers();
-      const add = (a: { event: string; severity?: string; geometry: unknown }, weight: number, fillOpacity: number) => {
+      const add = (a: AlertGeometry, weight: number, fillOpacity: number) => {
         const c = severityColor(a.severity, a.event);
         L.geoJSON(a.geometry as never, { style: { color: c, weight, fillColor: c, fillOpacity } })
-          .bindPopup(`<b>${a.event}</b>`)
+          .bindPopup(alertPopupHtml(a, c), { maxWidth: 300, className: 'alert-popup-wrap' })
           .bindTooltip(a.event, { sticky: true })
           .addTo(alertGroup);
       };
