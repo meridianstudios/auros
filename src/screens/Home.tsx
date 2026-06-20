@@ -11,7 +11,7 @@ import { usePrefs, convertTemp, shouldNotifyAlert, isQuietNow } from '../lib/pre
 import { RiskBadge } from '../components/RiskBadge';
 import { AlertCard } from '../components/AlertCard';
 import { CondIcon } from '../components/CondIcon';
-import { TrendChart } from '../components/TrendChart';
+import { HourlyGraph } from '../components/HourlyGraph';
 import { HeroSky } from '../components/HeroSky';
 import { SevereBanner } from '../components/SevereBanner';
 import type { RiskMeta } from '../theme/colors';
@@ -168,30 +168,16 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
           </>
         )}
 
-        {/* Hourly strip — full-width band */}
+        {/* Hourly forecast — icons + per-hour temps + temperature curve */}
         {w.hourly.length > 0 && (
           <>
             <div className="label">
-              <span>Hourly</span>
+              <span>Hourly Forecast</span>
               <button className="dim" style={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: 11, fontWeight: 600, letterSpacing: 0.7 }} onClick={() => onNavigate('forecast')}>
                 FULL FORECAST <ChevronRight size={13} />
               </button>
             </div>
-            <div className="hourly">
-              {w.hourly.slice(0, 12).map((h) => {
-                const pop = h.probabilityOfPrecipitation?.value ?? 0;
-                return (
-                  <div className="hour" key={h.startTime}>
-                    <div className="hr">{new Date(h.startTime).toLocaleTimeString([], { hour: 'numeric' })}</div>
-                    <CondIcon p={h} size={20} />
-                    <div className="hpop">{pop >= 10 ? `${pop}%` : ''}</div>
-                    <div className="htemp">{convertTemp(h.temperature, u)}°</div>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="label">Next 24 Hours</div>
-            <TrendChart hourly={w.hourly} units={u} />
+            <HourlyGraph hourly={w.hourly} units={u} />
           </>
         )}
 
