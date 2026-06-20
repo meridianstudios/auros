@@ -73,13 +73,84 @@ export function getRiskMeta(label?: string | null): RiskMeta | null {
   return RISK[label.toUpperCase().trim()] ?? null;
 }
 
+// Official NWS hazard colors (the same palette used on weather.gov), keyed by
+// exact event name so a polygon's color tells you the warning type at a glance.
+const NWS_COLORS: Record<string, string> = {
+  'tornado warning': '#FF0000',
+  'extreme wind warning': '#FF8C00',
+  'severe thunderstorm warning': '#FFA500',
+  'flash flood warning': '#8B0000',
+  'flash flood statement': '#8B0000',
+  'severe weather statement': '#00FFFF',
+  'snow squall warning': '#C71585',
+  'flood warning': '#00FF00',
+  'flood statement': '#00FF00',
+  'flood advisory': '#00FF7F',
+  'hydrologic advisory': '#00FF7F',
+  'special marine warning': '#FFA500',
+  'special weather statement': '#FFE4B5',
+  'tornado watch': '#FFFF00',
+  'severe thunderstorm watch': '#DB7093',
+  'flash flood watch': '#2E8B57',
+  'flood watch': '#2E8B57',
+  'hurricane warning': '#DC143C',
+  'hurricane watch': '#FF00FF',
+  'tropical storm warning': '#B22222',
+  'tropical storm watch': '#F08080',
+  'storm surge warning': '#B524F7',
+  'storm surge watch': '#DB7FF7',
+  'winter storm warning': '#FF69B4',
+  'winter storm watch': '#4682B4',
+  'winter weather advisory': '#7B68EE',
+  'ice storm warning': '#8B008B',
+  'blizzard warning': '#FF4500',
+  'wind chill warning': '#B0C4DE',
+  'wind chill advisory': '#AFEEEE',
+  'high wind warning': '#DAA520',
+  'high wind watch': '#B8860B',
+  'wind advisory': '#D2B48C',
+  'excessive heat warning': '#C71585',
+  'excessive heat watch': '#800000',
+  'heat advisory': '#FF7F50',
+  'freeze warning': '#483D8B',
+  'freeze watch': '#00FFFF',
+  'frost advisory': '#6495ED',
+  'dense fog advisory': '#708090',
+  'red flag warning': '#FF1493',
+  'fire weather watch': '#FFDEAD',
+  'air quality alert': '#808080',
+  'air stagnation advisory': '#808080',
+  'coastal flood warning': '#228B22',
+  'coastal flood watch': '#66CDAA',
+  'coastal flood advisory': '#7CFC00',
+  'small craft advisory': '#D8BFD8',
+  'gale warning': '#DDA0DD',
+  'tsunami warning': '#FD6347',
+  'dust storm warning': '#FFE4C4',
+};
+
 export function severityColor(severity?: string, event?: string): string {
-  const e = (event ?? '').toLowerCase();
-  if (e.includes('tornado')) return '#FB7185';
-  if (e.includes('flash flood') || e.includes('severe thunderstorm')) return '#F59E0B';
+  const e = (event ?? '').toLowerCase().trim();
+  if (NWS_COLORS[e]) return NWS_COLORS[e];
+
+  // Fallbacks for naming variants not in the exact table.
+  const watch = e.includes('watch');
+  if (e.includes('tornado')) return watch ? '#FFFF00' : '#FF0000';
+  if (e.includes('severe thunderstorm')) return watch ? '#DB7093' : '#FFA500';
+  if (e.includes('flash flood')) return watch ? '#2E8B57' : '#8B0000';
+  if (e.includes('hurricane')) return watch ? '#FF00FF' : '#DC143C';
+  if (e.includes('tropical storm')) return watch ? '#F08080' : '#B22222';
+  if (e.includes('storm surge')) return watch ? '#DB7FF7' : '#B524F7';
+  if (e.includes('flood')) return watch ? '#2E8B57' : e.includes('advisory') ? '#00FF7F' : '#00FF00';
+  if (e.includes('winter') || e.includes('snow') || e.includes('ice')) return watch ? '#4682B4' : '#FF69B4';
+  if (e.includes('heat')) return e.includes('warning') ? '#C71585' : watch ? '#800000' : '#FF7F50';
+  if (e.includes('wind')) return '#DAA520';
+  if (e.includes('fire') || e.includes('red flag')) return watch ? '#FFDEAD' : '#FF1493';
+
+  // Last resort: severity bucket.
   const s = (severity ?? '').toLowerCase();
-  if (s === 'extreme') return '#FB7185';
-  if (s === 'severe') return '#F59E0B';
+  if (s === 'extreme') return '#FF0000';
+  if (s === 'severe') return '#FFA500';
   if (s === 'moderate') return '#E0B93C';
   return '#6E8BFF';
 }

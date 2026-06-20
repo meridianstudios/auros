@@ -95,6 +95,7 @@ export function Radar() {
         const c = severityColor(a.severity, a.event);
         L.geoJSON(a.geometry as never, { style: { color: c, weight, fillColor: c, fillOpacity } })
           .bindPopup(`<b>${a.event}</b>`)
+          .bindTooltip(a.event, { sticky: true })
           .addTo(alertGroup);
       };
       natl.forEach((a) => add(a, 1.4, 0.08)); // nationwide, lighter
