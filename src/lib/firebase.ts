@@ -27,14 +27,18 @@ let app: FirebaseApp | undefined;
 let auth: Auth | undefined;
 let db: Firestore | undefined;
 
+// In the native (Tauri) app the popup resolver loads Google's auth iframe (gapi),
+// which is CORS-blocked on the tauri:// origin and crashes boot — so omit it there
+// (email/password still works). The web/PWA keeps it for Google popup sign-in.
+const IS_NATIVE = typeof window !== 'undefined' && ('__TAURI_INTERNALS__' in window || '__TAURI__' in window);
+
 if (firebaseReady) {
   app = initializeApp(cfg);
-  // Explicit local persistence so the session survives reloads and revisits.
-  // (getAuth's default resolution can fall back to in-memory in some browsers,
-  // which logs you out on every visit.) Keep the popup resolver for Google sign-in.
+  // Explicit local persistence so the session survives reloads and revisits
+  // (the default resolution can fall back to in-memory, logging you out).
   auth = initializeAuth(app, {
     persistence: [indexedDBLocalPersistence, browserLocalPersistence],
-    popupRedirectResolver: browserPopupRedirectResolver,
+    ...(IS_NATIVE ? {} : { popupRedirectResolver: browserPopupRedirectResolver }),
   });
   db = getFirestore(app);
 }
