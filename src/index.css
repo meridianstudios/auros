@@ -24,7 +24,7 @@ html, body, #root { height: 100%; margin: 0; }
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, system-ui, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif;
   font-size: 15px;
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
@@ -332,6 +332,7 @@ input[type="range"].slider::-moz-range-thumb { width: 16px; height: 16px; border
   .view { max-width: 760px; margin: 0 auto; }
   .radar-view { max-width: none; margin: 0; }
   .app-header .brand { display: none; }
+  .hero-sky { display: none; } /* animated sky only on mobile; plain hero on desktop */
 }
 
 /* ===== Desktop: home dashboard — wider + 2-column cards to fill the space ===== */

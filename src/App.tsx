@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { House, Radar as RadarIcon, TriangleAlert, RadioTower, Settings as SettingsIcon, CloudSun, MoreHorizontal } from 'lucide-react';
+import { House, Radar as RadarIcon, TriangleAlert, RadioTower, Settings as SettingsIcon, Zap, MoreHorizontal } from 'lucide-react';
 import { ThemeProvider } from './theme/ThemeContext';
 import { LocationsProvider } from './context/LocationsContext';
 import { PrefsProvider } from './lib/prefs';
@@ -44,7 +44,7 @@ function Shell() {
       <button className="menu-fab" aria-label="Menu" onClick={openMenu}><MoreHorizontal size={20} /></button>
       <main className="main">{screen}</main>
       <nav className="tabbar">
-        <div className="nav-brand"><CloudSun size={20} /> Auros</div>
+        <div className="nav-brand"><Zap size={19} /> Auros</div>
         {TABS.map(({ key, label, Icon }) => {
           const active = view === key || (key === 'home' && (view === 'locations' || view === 'forecast'));
           return (
