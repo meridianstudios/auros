@@ -3,6 +3,10 @@ import { createRoot } from 'react-dom/client';
 import './index.css';
 import App from './App.tsx';
 import { isNative } from './lib/platform';
+import { installNativeLinkHandler } from './lib/openExternal';
+
+// Route external links to the system browser in the native app (no-op on web).
+installNativeLinkHandler();
 
 if ('serviceWorker' in navigator) {
   if (isNative) {
