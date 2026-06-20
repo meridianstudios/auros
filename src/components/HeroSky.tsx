@@ -18,8 +18,6 @@ export function HeroSky({ condition, day }: { condition?: string; day: boolean }
   const sky = classify(condition);
   return (
     <div className={`hero-sky sky-${sky} ${day ? 'is-day' : 'is-night'}`} aria-hidden="true">
-      {sky === 'clear' && day && <div className="sun" />}
-      {sky === 'clear' && !day && <div className="moon" />}
       {sky === 'clear' && !day && <div className="stars" />}
       {sky === 'clouds' && (
         <>
