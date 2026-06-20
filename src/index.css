@@ -367,3 +367,27 @@ input[type="range"].slider::-moz-range-thumb { width: 16px; height: 16px; border
   .home-view .hero .temp { font-size: 92px; }
   .home-view .hero-ic svg { width: 84px; height: 84px; }
 }
+
+/* ===== Password-reset modal ===== */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(5, 8, 18, 0.62);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: modal-fade 0.16s ease-out;
+}
+.modal-sheet {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  animation: modal-rise 0.18s ease-out;
+}
+.reset-err { color: var(--danger); font-size: 13px; margin-top: 10px; line-height: 1.4; }
+@keyframes modal-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modal-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
