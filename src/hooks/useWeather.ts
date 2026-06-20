@@ -12,6 +12,7 @@ export interface UseWeather {
   timeline: StormWindow | null;
   risk: RiskMeta | null;
   riskTomorrow: RiskMeta | null;
+  riskDay3: RiskMeta | null;
   riskError: boolean;
   alerts: NwsAlert[];
   loading: boolean;
@@ -27,6 +28,7 @@ export function useWeather(lat: number, lon: number): UseWeather {
   const [timeline, setTimeline] = useState<StormWindow | null>(null);
   const [risk, setRisk] = useState<RiskMeta | null>(null);
   const [riskTomorrow, setRiskTomorrow] = useState<RiskMeta | null>(null);
+  const [riskDay3, setRiskDay3] = useState<RiskMeta | null>(null);
   const [riskError, setRiskError] = useState(false);
   const [alerts, setAlerts] = useState<NwsAlert[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,11 +37,12 @@ export function useWeather(lat: number, lon: number): UseWeather {
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const [pt, al, r1, r2] = await Promise.allSettled([
+    const [pt, al, r1, r2, r3] = await Promise.allSettled([
       getPoint(lat, lon),
       getActiveAlerts(lat, lon),
       getDayRisk(lat, lon, 1),
       getDayRisk(lat, lon, 2),
+      getDayRisk(lat, lon, 3),
     ]);
 
     const p = pt.status === 'fulfilled' ? pt.value : null;
@@ -47,6 +50,7 @@ export function useWeather(lat: number, lon: number): UseWeather {
     setAlerts(al.status === 'fulfilled' ? al.value : []);
     setRisk(r1.status === 'fulfilled' ? r1.value.risk : null);
     setRiskTomorrow(r2.status === 'fulfilled' ? r2.value.risk : null);
+    setRiskDay3(r3.status === 'fulfilled' ? r3.value.risk : null);
     setRiskError(r1.status === 'rejected');
 
     if (p?.forecastHourlyUrl) {
@@ -80,5 +84,5 @@ export function useWeather(lat: number, lon: number): UseWeather {
     return () => clearInterval(t);
   }, [refresh]);
 
-  return { point, current, hourly, daily, timeline, risk, riskTomorrow, riskError, alerts, loading, error, refresh };
+  return { point, current, hourly, daily, timeline, risk, riskTomorrow, riskDay3, riskError, alerts, loading, error, refresh };
 }

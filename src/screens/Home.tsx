@@ -11,6 +11,8 @@ import { usePrefs, convertTemp, shouldNotifyAlert, isQuietNow } from '../lib/pre
 import { RiskBadge } from '../components/RiskBadge';
 import { AlertCard } from '../components/AlertCard';
 import { CondIcon } from '../components/CondIcon';
+import { TrendChart } from '../components/TrendChart';
+import type { RiskMeta } from '../theme/colors';
 import { notify } from '../lib/notify';
 import { formatTime } from '../utils/format';
 import type { View } from '../nav';
@@ -38,6 +40,17 @@ function Tile({ k, v, sub, color }: { k: string; v: string; sub?: string; color?
       <div className="ck">{k}</div>
       <div className="cv" style={color ? { color } : undefined}>{v}</div>
       {sub && <div className="csub">{sub}</div>}
+    </div>
+  );
+}
+
+function OutlookRow({ label, risk }: { label: string; risk: RiskMeta }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13 }}>
+      <span className="muted">{label}</span>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontWeight: 600 }}>
+        <span style={{ width: 8, height: 8, borderRadius: 2, background: risk.color }} /> {risk.full}
+      </span>
     </div>
   );
 }
@@ -78,6 +91,7 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
       ? `${w.point.city}, ${w.point.state}`
       : shortPlace(selected.name);
   const tl = w.timeline;
+  const day3Label = new Date(Date.now() + 2 * 86400000).toLocaleDateString([], { weekday: 'long' });
   const storms = (trop?.storms ?? [])
     .map((s) => ({ ...s, dist: haversineMiles(selected.lat, selected.lon, s.lat, s.lon) }))
     .sort((a, b) => a.dist - b.dist);
@@ -167,6 +181,8 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
                 );
               })}
             </div>
+            <div className="label">Next 24 Hours</div>
+            <TrendChart hourly={w.hourly} units={u} />
           </>
         )}
 
@@ -213,9 +229,10 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
             <div className="label">Severe Outlook</div>
             <div className="card">
               <RiskBadge risk={w.risk} error={w.riskError} />
-              {w.riskTomorrow && (
-                <div className="muted" style={{ fontSize: 13, marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-                  Tomorrow · <span style={{ color: 'var(--text)' }}>{w.riskTomorrow.full} Risk</span>
+              {(w.riskTomorrow || w.riskDay3) && (
+                <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 9 }}>
+                  {w.riskTomorrow && <OutlookRow label="Tomorrow" risk={w.riskTomorrow} />}
+                  {w.riskDay3 && <OutlookRow label={day3Label} risk={w.riskDay3} />}
                 </div>
               )}
             </div>

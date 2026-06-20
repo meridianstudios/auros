@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
-import { Play, Pause, Lock } from 'lucide-react';
+import { Play, Pause, Lock, Cloud } from 'lucide-react';
 import { useLocations } from '../context/LocationsContext';
 import { useTheme } from '../theme/ThemeContext';
 import { getAlertGeometries, getActiveWarnings } from '../api/nws';
@@ -42,6 +42,7 @@ export function Radar() {
   const [product, setProduct] = useState<Product>('ref');
   const [idx, setIdx] = useState(FRAMES.length - 1);
   const [playing, setPlaying] = useState(false); // open paused on the most-recent frame
+  const [satellite, setSatellite] = useState(false);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -149,6 +150,21 @@ export function Radar() {
     return () => { added.forEach((l) => { try { l.remove(); } catch { /* noop */ } }); };
   }, [tropical, selected.lat, selected.lon, scheme]);
 
+  // Optional GOES-East infrared satellite (cloud cover) beneath the radar.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !satellite) return;
+    const layer = L.tileLayer(`${IEM}/goes_east_conus_ch13/{z}/{x}/{y}.png`, {
+      opacity: 0.8,
+      zIndex: 3,
+      maxNativeZoom: 9,
+      maxZoom: 16,
+      errorTileUrl: TRANSPARENT,
+      attribution: 'GOES-East: NOAA / Iowa Environmental Mesonet',
+    }).addTo(map);
+    return () => { try { map.removeLayer(layer); } catch { /* noop */ } };
+  }, [satellite, selected.lat, selected.lon, scheme]);
+
   // Reflectivity drives the live tile layer. Velocity/CC have no free map layer
   // (they need a Level III decoder backend — Phase 3), so we pull the layer off
   // the map instead of showing IEM's error tiles.
@@ -191,6 +207,9 @@ export function Radar() {
             </button>
           ))}
         </div>
+        <button className={`radar-sat ${satellite ? 'on' : ''}`} onClick={() => setSatellite((s) => !s)}>
+          <Cloud size={13} /> Satellite
+        </button>
 
         {product !== 'ref' && (
           <div className="radar-msg">
