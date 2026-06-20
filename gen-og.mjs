@@ -15,7 +15,7 @@ function star(cx, cy, ro, ri) {
 const FONT = 'Segoe UI, Arial, Helvetica, sans-serif';
 
 function card({ eyebrow, title, tagline, footer }) {
-  const tx = 96, ty = 232, tile = 162;
+  const tx = 96, ty = 273, tile = 162;
   const cx = tx + tile / 2, cy = ty + tile / 2;
   const footerSvg = footer
     ? `<text x="300" y="556" font-family="${FONT}" font-size="22" font-weight="600" fill="#7176a6">${footer}</text>`
