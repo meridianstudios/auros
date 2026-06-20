@@ -4,7 +4,7 @@ import { useLocations } from '../context/LocationsContext';
 import { searchPlaces, type GeocodeResult } from '../api/geocode';
 
 export function Locations() {
-  const { locations, selectedId, select, remove, addByCurrentPosition, addPlace } = useLocations();
+  const { locations, selectedId, selected, select, remove, addByCurrentPosition, addPlace } = useLocations();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<GeocodeResult[]>([]);
   const [busy, setBusy] = useState<null | 'gps' | 'search'>(null);
@@ -23,7 +23,7 @@ export function Locations() {
     if (v.trim().length < 2) { setResults([]); setBusy(null); return; }
     setBusy('search');
     timer.current = window.setTimeout(async () => {
-      try { setResults(await searchPlaces(v.trim())); }
+      try { setResults(await searchPlaces(v.trim(), 6, { lat: selected.lat, lon: selected.lon })); }
       catch { setResults([]); }
       finally { setBusy(null); }
     }, 250);
@@ -73,7 +73,7 @@ export function Locations() {
             className="input"
             value={query}
             onChange={(e) => onQuery(e.target.value)}
-            placeholder="Start typing… e.g. Kalamazoo"
+            placeholder="Start typing… address, town, or county"
             onKeyDown={(e) => { if (e.key === 'Enter' && results[0]) pick(results[0]); }}
             autoComplete="off"
           />
@@ -84,6 +84,7 @@ export function Locations() {
                 <button key={`${r.lat},${r.lon},${i}`} className="item" style={{ width: '100%', textAlign: 'left' }} onClick={() => pick(r)}>
                   <span className="ic"><MapPin size={18} /></span>
                   <span className="grow"><span className="t">{r.name}</span></span>
+                  {r.kind && <span className="dim" style={{ fontSize: 11, fontWeight: 600, letterSpacing: 0.3, flex: 'none' }}>{r.kind}</span>}
                 </button>
               ))}
             </div>
