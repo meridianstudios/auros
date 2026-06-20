@@ -12,6 +12,8 @@ import { RiskBadge } from '../components/RiskBadge';
 import { AlertCard } from '../components/AlertCard';
 import { CondIcon } from '../components/CondIcon';
 import { TrendChart } from '../components/TrendChart';
+import { HeroSky } from '../components/HeroSky';
+import { SevereBanner } from '../components/SevereBanner';
 import type { RiskMeta } from '../theme/colors';
 import { notify } from '../lib/notify';
 import { formatTime } from '../utils/format';
@@ -43,6 +45,9 @@ function Tile({ k, v, sub, color }: { k: string; v: string; sub?: string; color?
     </div>
   );
 }
+
+const SEV_RANK: Record<string, number> = { Extreme: 3, Severe: 2, Moderate: 1, Minor: 0 };
+const sevRank = (s?: string) => SEV_RANK[s ?? ''] ?? 0;
 
 function OutlookRow({ label, risk }: { label: string; risk: RiskMeta }) {
   return (
@@ -92,6 +97,8 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
       : shortPlace(selected.name);
   const tl = w.timeline;
   const day3Label = new Date(Date.now() + 2 * 86400000).toLocaleDateString([], { weekday: 'long' });
+  const isDay = c ? c.isDay : true;
+  const warning = [...w.alerts].filter((a) => /warning/i.test(a.event)).sort((a, b) => sevRank(b.severity) - sevRank(a.severity))[0];
   const storms = (trop?.storms ?? [])
     .map((s) => ({ ...s, dist: haversineMiles(selected.lat, selected.lon, s.lat, s.lon) }))
     .sort((a, b) => a.dist - b.dist);
@@ -102,6 +109,7 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
         <div className="brand"><Zap size={16} /> Auros</div>
       </div>
       <div className="hero">
+        <HeroSky condition={w.current?.shortForecast} day={isDay} />
         <button className="place" onClick={() => onNavigate('locations')}>
           <MapPin size={14} /> {place} <ChevronDown size={13} style={{ opacity: 0.5 }} />
         </button>
@@ -126,6 +134,7 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
       </div>
 
       <div className="pad">
+        {warning && <SevereBanner alert={warning} onNavigate={onNavigate} />}
         {storms.length > 0 && (
           <>
             <div className="label">Active Tropical Systems</div>
