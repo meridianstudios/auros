@@ -51,6 +51,7 @@ export function Radar() {
   const mapRef = useRef<L.Map | null>(null);
   const radarLayerRef = useRef<L.TileLayer | null>(null);
   const l3LayerRef = useRef<L.Layer | null>(null);
+  const fittedRef = useRef<string | null>(null); // product:site we've already framed
 
   const [product, setProduct] = useState<Product>('ref');
   const [idx, setIdx] = useState(FRAMES.length - 1);
@@ -219,7 +220,7 @@ export function Radar() {
         l3LayerRef.current = null;
       }
     };
-    if (product === 'ref') { clearL3(); setL3({ status: 'idle' }); return; }
+    if (product === 'ref') { clearL3(); setL3({ status: 'idle' }); fittedRef.current = null; return; }
     const def = L3_PRODUCTS[product];
     if (!def || !l3Site) { clearL3(); return; }
 
@@ -237,8 +238,24 @@ export function Radar() {
         if (l3LayerRef.current) {
           (l3LayerRef.current as unknown as { setData: (d: typeof data, p: typeof def) => void }).setData(data, def);
         } else {
-          l3LayerRef.current = createRadialLayer(data, def);
+          l3LayerRef.current = createRadialLayer(data, def, 0.72);
           l3LayerRef.current.addTo(map);
+        }
+        // Frame the radar's coverage once per product/site so the ~230 km disc
+        // fits the view instead of overflowing it as a full-screen wash. Only on
+        // a new selection — not on the auto-refresh — so it never yanks the view.
+        const fitKey = `${product}:${site.id}`;
+        if (fittedRef.current !== fitKey) {
+          fittedRef.current = fitKey;
+          // Frame the product's actual range (e.g. ~300 km velocity, ~460 km
+          // reflectivity) plus a small margin, so the whole disc shows bounded.
+          const rangeKm = data.gateKm * ((data.radials[0]?.bins.length || 920)) * 1.05;
+          const dLat = rangeKm / 111;
+          const dLon = rangeKm / (111 * Math.cos((data.radarLat * Math.PI) / 180));
+          map.fitBounds(
+            [[data.radarLat - dLat, data.radarLon - dLon], [data.radarLat + dLat, data.radarLon + dLon]],
+            { animate: true, padding: [20, 20] }
+          );
         }
         setL3({ status: 'ok', site: site.id, time: fetched.time });
       } catch (e) {
