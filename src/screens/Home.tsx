@@ -4,6 +4,9 @@ import { useLocations } from '../context/LocationsContext';
 import { useWeather } from '../hooks/useWeather';
 import { useConditions } from '../hooks/useConditions';
 import { aqiInfo, uvInfo } from '../api/conditions';
+import { useTropical } from '../hooks/useTropical';
+import { catColor, compass } from '../api/tropical';
+import { haversineMiles } from '../utils/geo';
 import { usePrefs, convertTemp, shouldNotifyAlert, isQuietNow } from '../lib/prefs';
 import { RiskBadge } from '../components/RiskBadge';
 import { AlertCard } from '../components/AlertCard';
@@ -44,6 +47,7 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
   const { prefs } = usePrefs();
   const w = useWeather(selected.lat, selected.lon);
   const c = useConditions(selected.lat, selected.lon);
+  const trop = useTropical();
   const notified = useRef<Set<string>>(new Set());
   const u = prefs.units;
 
@@ -74,6 +78,9 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
       ? `${w.point.city}, ${w.point.state}`
       : shortPlace(selected.name);
   const tl = w.timeline;
+  const storms = (trop?.storms ?? [])
+    .map((s) => ({ ...s, dist: haversineMiles(selected.lat, selected.lon, s.lat, s.lon) }))
+    .sort((a, b) => a.dist - b.dist);
 
   return (
     <div className="view fade home-view">
@@ -105,6 +112,29 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
       </div>
 
       <div className="pad">
+        {storms.length > 0 && (
+          <>
+            <div className="label">Active Tropical Systems</div>
+            {storms.map((s) => (
+              <div key={s.name} className="card" style={{ display: 'flex', gap: 12 }}>
+                <span style={{ width: 4, alignSelf: 'stretch', borderRadius: 3, background: catColor(s.category), flex: 'none' }} />
+                <div className="grow">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                    <span style={{ fontWeight: 600 }}>{s.name}</span>
+                    <span style={{ color: catColor(s.category), fontWeight: 700, fontSize: 13 }}>{s.category}</span>
+                  </div>
+                  <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>
+                    {s.type}{s.maxWindMph != null ? ` · ${s.maxWindMph} mph winds` : ''}{s.pressure != null ? ` · ${s.pressure} mb` : ''}
+                  </div>
+                  <div className="dim" style={{ fontSize: 12, marginTop: 2 }}>
+                    {s.moveDir != null ? `Moving ${compass(s.moveDir)}${s.moveSpeedMph != null ? ` at ${s.moveSpeedMph} mph` : ''} · ` : ''}{Math.round(s.dist)} mi away
+                  </div>
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+
         {w.error && (
           <>
             <div className="label">Connection</div>

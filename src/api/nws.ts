@@ -89,16 +89,47 @@ export async function getForecast(url: string): Promise<NwsPeriod[]> {
 
 export interface AlertGeometry { id: string; event: string; severity?: string; geometry: unknown }
 
-// Active alerts that carry a polygon, for drawing on the radar map.
+// Active-alert areas for drawing on the radar map. Storm-based alerts (tornado,
+// severe t-storm) carry a polygon directly; most others (advisories, watches,
+// many warnings) are zone-based with geometry:null — for those we resolve their
+// affected NWS zones to polygons. Zone fetches are deduped and capped.
+const ZONE_CAP = 25;
+
 export async function getAlertGeometries(lat: number, lon: number): Promise<AlertGeometry[]> {
   const data = await getJson(`${BASE}/alerts/active?point=${round4(lat)},${round4(lon)}`);
   const feats = Array.isArray(data.features) ? data.features : [];
-  return feats
-    .filter((f: any) => f.geometry)
-    .map((f: any) => ({
-      id: f.id ?? Math.random().toString(36),
-      event: f.properties?.event ?? 'Alert',
-      severity: f.properties?.severity,
-      geometry: f.geometry,
-    }));
+
+  // Collect zones needed for alerts that lack their own polygon (capped).
+  const need: string[] = [];
+  for (const f of feats) {
+    if (f.geometry) continue;
+    for (const z of f.properties?.affectedZones ?? []) {
+      if (!need.includes(z) && need.length < ZONE_CAP) need.push(z);
+    }
+  }
+  const zoneGeom = new Map<string, unknown>();
+  await Promise.allSettled(
+    need.map(async (z) => {
+      try {
+        const zd = await getJson(z);
+        if (zd.geometry) zoneGeom.set(z, zd.geometry);
+      } catch { /* skip unreachable zone */ }
+    })
+  );
+
+  const out: AlertGeometry[] = [];
+  for (const f of feats) {
+    const p = f.properties ?? {};
+    const event = p.event ?? 'Alert';
+    const severity = p.severity;
+    if (f.geometry) {
+      out.push({ id: f.id ?? Math.random().toString(36), event, severity, geometry: f.geometry });
+    } else {
+      for (const z of p.affectedZones ?? []) {
+        const g = zoneGeom.get(z);
+        if (g) out.push({ id: `${f.id ?? event}:${z}`, event, severity, geometry: g });
+      }
+    }
+  }
+  return out;
 }

@@ -5,6 +5,8 @@ import { useLocations } from '../context/LocationsContext';
 import { useTheme } from '../theme/ThemeContext';
 import { getAlertGeometries } from '../api/nws';
 import { severityColor } from '../theme/colors';
+import { useTropical } from '../hooks/useTropical';
+import { category, catColor } from '../api/tropical';
 
 const TRANSPARENT =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/QBYAAAAAElFTkSuQmCC';
@@ -29,6 +31,7 @@ const PRODUCTS: { key: Product; label: string; long: string }[] = [
 export function Radar() {
   const { selected } = useLocations();
   const { scheme } = useTheme();
+  const tropical = useTropical();
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -98,6 +101,39 @@ export function Radar() {
       radarLayerRef.current = null;
     };
   }, [selected.lat, selected.lon, scheme]);
+
+  // Overlay active tropical systems — forecast cone, track, and storm points.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !tropical) return;
+    const fc = (x: unknown) => ((x as any)?.features?.length ? (x as any) : null);
+    const added: L.Layer[] = [];
+    try {
+      const cone = fc(tropical.cone);
+      if (cone) added.push(L.geoJSON(cone, { style: { color: '#ffffff', weight: 1.5, fillColor: '#ffffff', fillOpacity: 0.1, dashArray: '5 4' } }).addTo(map));
+      const track = fc(tropical.track);
+      if (track) added.push(L.geoJSON(track, { style: { color: '#ffffff', weight: 2 } }).addTo(map));
+      const points = fc(tropical.points);
+      if (points) {
+        added.push(
+          L.geoJSON(points, {
+            pointToLayer: (f: any, ll: L.LatLng) => {
+              const p = f.properties || {};
+              const mw = Number.isFinite(Number(p.maxwind)) ? Number(p.maxwind) : null;
+              return L.circleMarker(ll, { radius: 5, color: '#fff', weight: 1.5, fillColor: catColor(category(mw, p.stormtype)), fillOpacity: 1 });
+            },
+            onEachFeature: (f: any, layer: L.Layer) => {
+              const p = f.properties || {};
+              const mw = Number.isFinite(Number(p.maxwind)) ? Number(p.maxwind) : null;
+              const mph = mw != null ? Math.round(mw * 1.15078) : '?';
+              layer.bindPopup(`<b>${p.stormname ?? 'Storm'}</b><br>${category(mw, p.stormtype)} · ${mph} mph`);
+            },
+          }).addTo(map)
+        );
+      }
+    } catch { /* ignore overlay errors */ }
+    return () => { added.forEach((l) => { try { l.remove(); } catch { /* noop */ } }); };
+  }, [tropical, selected.lat, selected.lon, scheme]);
 
   // Reflectivity drives the live tile layer. Velocity/CC have no free map layer
   // (they need a Level III decoder backend — Phase 3), so we pull the layer off
