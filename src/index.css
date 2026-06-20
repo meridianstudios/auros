@@ -469,3 +469,32 @@ input[type="range"].slider::-moz-range-thumb { width: 16px; height: 16px; border
 }
 .radar-tilts button { padding: 6px 9px; border-radius: 8px; font-size: 12px; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
 .radar-tilts button.on { background: var(--primary); color: #fff; }
+
+/* ===== New-alert alarm (app-wide) ===== */
+.alarm-backdrop {
+  position: fixed; inset: 0; z-index: 2000;
+  background: rgba(5, 8, 18, 0.78); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  animation: alarm-fade 0.2s ease-out;
+}
+.alarm-card {
+  width: 100%; max-width: 400px; background: var(--surface);
+  border: 2px solid var(--danger); border-radius: 16px; overflow: hidden;
+  box-shadow: 0 18px 60px -12px rgba(0, 0, 0, 0.7);
+  animation: alarm-pop 0.22s cubic-bezier(.2, .9, .3, 1.2);
+}
+.alarm-head {
+  display: flex; align-items: center; gap: 10px; padding: 14px 18px;
+  color: #fff; font-size: 17px; font-weight: 800; letter-spacing: -0.2px;
+  animation: alarm-pulse 1.1s ease-in-out infinite;
+}
+.alarm-body { padding: 16px 18px 6px; max-height: 50vh; overflow-y: auto; }
+.alarm-headline { font-size: 14px; font-weight: 600; line-height: 1.4; }
+.alarm-area { font-size: 13px; color: var(--text-muted); margin-top: 8px; line-height: 1.45; }
+.alarm-until { font-size: 13px; color: var(--warning); font-weight: 600; margin-top: 8px; }
+.alarm-instruction { font-size: 13px; color: var(--text); margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); line-height: 1.5; white-space: pre-wrap; }
+.alarm-dismiss { margin: 14px 18px 18px; width: calc(100% - 36px); }
+@keyframes alarm-fade { from { opacity: 0 } to { opacity: 1 } }
+@keyframes alarm-pop { from { opacity: 0; transform: scale(0.94) } to { opacity: 1; transform: scale(1) } }
+@keyframes alarm-pulse { 0%, 100% { filter: brightness(1) } 50% { filter: brightness(1.18) } }
+@media (prefers-reduced-motion: reduce) { .alarm-head, .alarm-card { animation: none; } }

@@ -13,6 +13,7 @@ import { Forecast } from './screens/Forecast';
 import { Drawer } from './components/Drawer';
 import { SignIn } from './screens/SignIn';
 import { AuthProvider } from './context/AuthContext';
+import { AlertAlarm } from './components/AlertAlarm';
 
 // Radar pulls in Leaflet — code-split it so it loads only when the tab opens.
 const Radar = lazy(() => import('./screens/Radar').then((m) => ({ default: m.Radar })));
@@ -72,6 +73,7 @@ function Shell() {
         })}
       </nav>
       <Drawer open={menuOpen} onClose={() => setMenuOpen(false)} onNavigate={setView} />
+      <AlertAlarm />
     </div>
   );
 }
