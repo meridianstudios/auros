@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react';
 import { MapPin, ChevronDown, ChevronRight, ShieldCheck, CloudLightning, Zap } from 'lucide-react';
 import { useLocations } from '../context/LocationsContext';
 import { useWeather } from '../hooks/useWeather';
+import { useConditions } from '../hooks/useConditions';
+import { aqiInfo, uvInfo } from '../api/conditions';
 import { usePrefs, convertTemp, shouldNotifyAlert, isQuietNow } from '../lib/prefs';
 import { RiskBadge } from '../components/RiskBadge';
 import { AlertCard } from '../components/AlertCard';
@@ -18,10 +20,30 @@ function shortPlace(name: string): string {
   return `${parts[0]}, ${parts[parts.length - 1]}`;
 }
 
+// Local "HH:MM" (24h, location's own time) → "6:29 AM".
+function fmtClock(iso: string): string {
+  const [hh, mm = '00'] = (iso.split('T')[1] ?? '').split(':');
+  let h = parseInt(hh, 10);
+  const ap = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `${h}:${mm} ${ap}`;
+}
+
+function Tile({ k, v, sub, color }: { k: string; v: string; sub?: string; color?: string }) {
+  return (
+    <div className="ctile">
+      <div className="ck">{k}</div>
+      <div className="cv" style={color ? { color } : undefined}>{v}</div>
+      {sub && <div className="csub">{sub}</div>}
+    </div>
+  );
+}
+
 export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
   const { selected } = useLocations();
   const { prefs } = usePrefs();
   const w = useWeather(selected.lat, selected.lon);
+  const c = useConditions(selected.lat, selected.lon);
   const notified = useRef<Set<string>>(new Set());
   const u = prefs.units;
 
@@ -114,6 +136,24 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
                   </div>
                 );
               })}
+            </div>
+          </>
+        )}
+
+        {c && (
+          <>
+            <div className="label">Conditions</div>
+            <div className="cond-grid">
+              {c.feelsLikeF != null && <Tile k="Feels like" v={`${convertTemp(c.feelsLikeF, u)}°`} />}
+              {c.humidity != null && <Tile k="Humidity" v={`${c.humidity}%`} />}
+              {c.dewpointF != null && <Tile k="Dew point" v={`${convertTemp(c.dewpointF, u)}°`} />}
+              {c.gustMph != null && <Tile k="Wind gust" v={u === 'C' ? `${Math.round(c.gustMph * 1.609)} km/h` : `${Math.round(c.gustMph)} mph`} />}
+              {c.uv != null && <Tile k="UV index" v={`${Math.round(c.uv)}`} sub={uvInfo(c.uv)} />}
+              {c.aqi != null && <Tile k="Air quality" v={`${c.aqi}`} sub={aqiInfo(c.aqi).label} color={aqiInfo(c.aqi).color} />}
+              {c.pressureHpa != null && <Tile k="Pressure" v={u === 'C' ? `${Math.round(c.pressureHpa)} hPa` : `${(c.pressureHpa * 0.02953).toFixed(2)} in`} />}
+              {c.visibilityM != null && <Tile k="Visibility" v={u === 'C' ? `${Math.round(c.visibilityM / 1000)} km` : `${Math.round(c.visibilityM / 1609)} mi`} />}
+              {c.sunrise && <Tile k="Sunrise" v={fmtClock(c.sunrise)} />}
+              {c.sunset && <Tile k="Sunset" v={fmtClock(c.sunset)} />}
             </div>
           </>
         )}
