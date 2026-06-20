@@ -10,6 +10,14 @@ import { notify } from '../lib/notify';
 import { formatTime } from '../utils/format';
 import type { View } from '../nav';
 
+// Trim a long geocoder label ("Noble Township, Branch County, MI") to a tidy
+// "Noble Township, MI" for the hero. Two-part names are left as-is.
+function shortPlace(name: string): string {
+  const parts = name.split(',').map((s) => s.trim()).filter(Boolean);
+  if (parts.length <= 2) return name;
+  return `${parts[0]}, ${parts[parts.length - 1]}`;
+}
+
 export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
   const { selected } = useLocations();
   const { prefs } = usePrefs();
@@ -37,7 +45,12 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
     notify('Storms expected', `${selected.name}: likely ${formatTime(tl.startIso)}–${formatTime(tl.endIso)}, peak ${tl.peakPop}%`);
   }, [w.timeline, prefs, selected.name]);
 
-  const place = w.point?.city ? `${w.point.city}, ${w.point.state}` : selected.name;
+  // Show the location the user actually chose. Only GPS-added spots (named the
+  // generic "My Location") fall back to the NWS nearest-city.
+  const place =
+    selected.name === 'My Location' && w.point?.city
+      ? `${w.point.city}, ${w.point.state}`
+      : shortPlace(selected.name);
   const tl = w.timeline;
 
   return (
