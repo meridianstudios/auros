@@ -9,8 +9,8 @@ import { severityColor } from '../theme/colors';
 import { useTropical } from '../hooks/useTropical';
 import { category, catColor } from '../api/tropical';
 import { NEXRAD_SITES, nearestSite, type NexradSite } from '../data/nexradSites';
-import { fetchLatestL3 } from '../api/nexrad';
-import { decodeL3 } from '../lib/nexradL3/decode';
+import { fetchRecentL3 } from '../api/nexrad';
+import { decodeL3, type L3Data } from '../lib/nexradL3/decode';
 import { L3_PRODUCTS } from '../lib/nexradL3/l3products';
 import { createRadialLayer } from '../lib/nexradL3/RadialLayer';
 
@@ -41,7 +41,8 @@ const PRODUCTS: { key: Product; label: string; long: string }[] = [
 ];
 
 const ALERT_REFRESH_MS = 120_000; // re-fetch alert overlays every 2 min
-const L3_REFRESH_MS = 150_000; // re-fetch the latest L3 scan every ~2.5 min
+const L3_REFRESH_MS = 150_000; // re-fetch the latest L3 scans every ~2.5 min
+const L3_FRAMES = 8; // scans to load for the animation loop
 
 type L3State = { status: 'idle' | 'loading' | 'ok' | 'error'; site?: string; time?: Date; msg?: string };
 
@@ -88,6 +89,9 @@ export function Radar() {
   // Which radar site feeds the L3 products. Defaults to nearest; the user can
   // click another station's dot on the map to switch.
   const [l3Site, setL3Site] = useState<NexradSite | null>(null);
+  const [tilt, setTilt] = useState(0); // elevation tilt index 0-3 (0.5° → 1.8°)
+  const [l3Frames, setL3Frames] = useState<{ data: L3Data; time: Date }[]>([]);
+  const [l3Idx, setL3Idx] = useState(0); // current frame in the L3 loop
 
   // Reset to the nearest site whenever the selected location changes.
   useEffect(() => {
@@ -236,65 +240,90 @@ export function Radar() {
     return () => clearInterval(t);
   }, [product, playing]);
 
-  // Level-3 products: fetch the nearest site's latest scan from the AWS bucket,
-  // decode it, and render the radials. Re-fetches on an interval while active.
+  // Level-3 products: fetch the last few scans for the selected site/product/
+  // tilt, decode them into a loop, and frame the radar's coverage. Rendering of
+  // the current frame happens in the effect below; this one only loads data.
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    const clearL3 = () => {
-      if (l3LayerRef.current) {
-        try { map.removeLayer(l3LayerRef.current); } catch { /* noop */ }
-        l3LayerRef.current = null;
-      }
-    };
-    if (product === 'ref') { clearL3(); setL3({ status: 'idle' }); fittedRef.current = null; return; }
+    if (product === 'ref') { setL3({ status: 'idle' }); setL3Frames([]); fittedRef.current = null; return; }
     const def = L3_PRODUCTS[product];
-    if (!def || !l3Site) { clearL3(); return; }
+    const map = mapRef.current;
+    if (!def || !l3Site || !map) { setL3Frames([]); return; }
 
     let cancelled = false;
     const site = l3Site;
     setL3({ status: 'loading', site: site.id });
+    const tiltProd = def.prod[0] + tilt + def.prod.slice(2); // N0G → N2G for tilt 2
 
     const load = async () => {
       try {
-        const fetched = await fetchLatestL3(site.id, def.prod);
-        if (cancelled || !mapRef.current) return;
-        if (!fetched) { clearL3(); setL3({ status: 'error', site: site.id, msg: 'No recent scan available' }); return; }
-        const data = await decodeL3(fetched.data);
-        if (cancelled || !mapRef.current) return;
-        if (l3LayerRef.current) {
-          (l3LayerRef.current as unknown as { setData: (d: typeof data, p: typeof def) => void }).setData(data, def);
-        } else {
-          l3LayerRef.current = createRadialLayer(data, def, 0.72);
-          l3LayerRef.current.addTo(map);
-        }
-        // Frame the radar's coverage once per product/site so the ~230 km disc
-        // fits the view instead of overflowing it as a full-screen wash. Only on
-        // a new selection — not on the auto-refresh — so it never yanks the view.
+        const fetched = await fetchRecentL3(site.id, tiltProd, L3_FRAMES);
+        if (cancelled) return;
+        if (!fetched.length) { setL3Frames([]); setL3({ status: 'error', site: site.id, msg: 'No recent scan available' }); return; }
+        const decoded = await Promise.all(
+          fetched.map(async (f) => {
+            try { return { data: await decodeL3(f.data), time: f.time }; } catch { return null; }
+          })
+        );
+        if (cancelled) return;
+        const frames = decoded.filter((d): d is { data: L3Data; time: Date } => d !== null);
+        if (!frames.length) { setL3Frames([]); setL3({ status: 'error', site: site.id, msg: 'Could not decode scans' }); return; }
+        setL3Frames(frames);
+        setL3Idx(frames.length - 1);
+        setL3({ status: 'ok', site: site.id, time: frames[frames.length - 1].time });
+
+        // Frame the radar's coverage once per product/site (not on refresh, not
+        // on tilt change) so the disc fits without yanking the view.
         const fitKey = `${product}:${site.id}`;
-        if (fittedRef.current !== fitKey) {
+        if (fittedRef.current !== fitKey && mapRef.current) {
           fittedRef.current = fitKey;
-          // Frame the product's actual range (e.g. ~300 km velocity, ~460 km
-          // reflectivity) plus a small margin, so the whole disc shows bounded.
-          const rangeKm = data.gateKm * ((data.radials[0]?.bins.length || 920)) * 1.05;
+          const d0 = frames[frames.length - 1].data;
+          const rangeKm = d0.gateKm * (d0.radials[0]?.bins.length || 920) * 1.05;
           const dLat = rangeKm / 111;
-          const dLon = rangeKm / (111 * Math.cos((data.radarLat * Math.PI) / 180));
-          map.fitBounds(
-            [[data.radarLat - dLat, data.radarLon - dLon], [data.radarLat + dLat, data.radarLon + dLon]],
+          const dLon = rangeKm / (111 * Math.cos((d0.radarLat * Math.PI) / 180));
+          mapRef.current.fitBounds(
+            [[d0.radarLat - dLat, d0.radarLon - dLon], [d0.radarLat + dLat, d0.radarLon + dLon]],
             { animate: true, padding: [20, 20] }
           );
         }
-        setL3({ status: 'ok', site: site.id, time: fetched.time });
       } catch (e) {
         if (cancelled) return;
-        clearL3();
+        setL3Frames([]);
         setL3({ status: 'error', site: site.id, msg: (e as Error).message });
       }
     };
     load();
     const timer = setInterval(load, L3_REFRESH_MS);
-    return () => { cancelled = true; clearInterval(timer); clearL3(); };
-  }, [product, l3Site, scheme]);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [product, l3Site, tilt, scheme]);
+
+  // Render the current L3 frame onto the map (also handles create/teardown).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const removeLayer = () => {
+      if (l3LayerRef.current) {
+        try { map.removeLayer(l3LayerRef.current); } catch { /* noop */ }
+        l3LayerRef.current = null;
+      }
+    };
+    const def = product !== 'ref' ? L3_PRODUCTS[product] : null;
+    const frame = l3Frames[Math.min(l3Idx, l3Frames.length - 1)];
+    if (!def || !frame) { removeLayer(); return; }
+    if (l3LayerRef.current && map.hasLayer(l3LayerRef.current)) {
+      (l3LayerRef.current as unknown as { setData: (d: L3Data, p: typeof def) => void }).setData(frame.data, def);
+    } else {
+      removeLayer();
+      l3LayerRef.current = createRadialLayer(frame.data, def, 0.72);
+      l3LayerRef.current.addTo(map);
+    }
+  }, [l3Frames, l3Idx, product, scheme]);
+
+  // Animate the L3 loop when playing.
+  useEffect(() => {
+    if (product === 'ref' || !playing || l3Frames.length < 2) return;
+    const t = setInterval(() => setL3Idx((i) => (i + 1) % l3Frames.length), 700);
+    return () => clearInterval(t);
+  }, [product, playing, l3Frames.length]);
 
   // Radar-station dots (L3 products only) — click one to switch which radar the
   // velocity/etc. is read from. Live in markerPane so they sit above the radial
@@ -326,8 +355,9 @@ export function Radar() {
   const stamp = cur.minsAgo === 0 ? 'Now' : `${cur.minsAgo} min ago`;
   const meta = PRODUCTS.find((p) => p.key === product)!;
   const l3def = product !== 'ref' ? L3_PRODUCTS[product] : null;
-  const scanStamp = l3.time
-    ? l3.time.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  const curFrame = l3Frames[Math.min(l3Idx, Math.max(0, l3Frames.length - 1))];
+  const scanStamp = curFrame
+    ? curFrame.time.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
     : '';
 
   const pillSub =
@@ -365,6 +395,15 @@ export function Radar() {
           <div className="radar-sat-legend">Infrared satellite · bright = colder, higher cloud tops (storms)</div>
         )}
 
+        {l3def && (
+          <div className="radar-tilts">
+            <div className="rt-label">Tilt</div>
+            {['0.5°', '0.9°', '1.3°', '1.8°'].map((lbl, i) => (
+              <button key={i} className={tilt === i ? 'on' : ''} onClick={() => setTilt(i)}>{lbl}</button>
+            ))}
+          </div>
+        )}
+
         {l3def && l3.status === 'loading' && (
           <div className="radar-l3-badge">
             <Loader size={13} className="spin" /> Decoding {l3def.label.toLowerCase()}…
@@ -386,7 +425,7 @@ export function Radar() {
         )}
       </div>
 
-      {product === 'ref' && (
+      {product === 'ref' ? (
         <div className="radar-controls">
           <button className="play" onClick={() => setPlaying((p) => !p)} aria-label={playing ? 'Pause' : 'Play'}>
             {playing ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
@@ -401,7 +440,22 @@ export function Radar() {
           />
           <div className="stamp">{stamp}</div>
         </div>
-      )}
+      ) : l3Frames.length > 1 ? (
+        <div className="radar-controls">
+          <button className="play" onClick={() => setPlaying((p) => !p)} aria-label={playing ? 'Pause' : 'Play'}>
+            {playing ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
+          </button>
+          <input
+            className="slider"
+            type="range"
+            min={0}
+            max={l3Frames.length - 1}
+            value={Math.min(l3Idx, l3Frames.length - 1)}
+            onChange={(e) => { setPlaying(false); setL3Idx(Number(e.target.value)); }}
+          />
+          <div className="stamp">{scanStamp}</div>
+        </div>
+      ) : null}
     </div>
   );
 }

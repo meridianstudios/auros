@@ -38,10 +38,10 @@ function timeFromKey(key: string): Date {
   return new Date(Date.UTC(+Y, +M - 1, +D, +h, +m, +s));
 }
 
-// Find the newest key for siteId (e.g. KGRR) + product (e.g. N0G), trying today
-// then yesterday (UTC). start-after jumps near "now" so high-volume products
-// don't get truncated to an old page.
-export async function fetchLatestL3(siteId: string, prod: string): Promise<L3Fetch | null> {
+// Most recent keys for siteId + product, newest last. Tries today then
+// yesterday (UTC); start-after jumps near "now" so high-volume products don't
+// get truncated to an old page.
+async function recentKeys(siteId: string, prod: string, count: number): Promise<string[]> {
   const site3 = bucketSite(siteId);
   const now = new Date();
   for (const dayOffset of [0, 1]) {
@@ -49,15 +49,32 @@ export async function fetchLatestL3(siteId: string, prod: string): Promise<L3Fet
     const Y = d.getUTCFullYear();
     const datePrefix = `${site3}_${prod}_${Y}_${pad(d.getUTCMonth() + 1)}_${pad(d.getUTCDate())}`;
     let startAfter: string | undefined;
-    if (dayOffset === 0) startAfter = `${datePrefix}_${pad(Math.max(0, d.getUTCHours() - 3))}`;
+    if (dayOffset === 0) startAfter = `${datePrefix}_${pad(Math.max(0, d.getUTCHours() - 4))}`;
     let keys = await listKeys(datePrefix, startAfter);
     if (!keys.length && startAfter) keys = await listKeys(datePrefix);
-    if (keys.length) {
-      const key = keys[keys.length - 1];
-      const res = await fetch(`${BUCKET}/${key}`);
-      if (!res.ok) throw new Error(`Radar file fetch failed: ${res.status}`);
-      return { data: await res.arrayBuffer(), key, time: timeFromKey(key) };
-    }
+    if (keys.length) return keys.slice(-count);
   }
-  return null;
+  return [];
+}
+
+export async function fetchLatestL3(siteId: string, prod: string): Promise<L3Fetch | null> {
+  const keys = await recentKeys(siteId, prod, 1);
+  if (!keys.length) return null;
+  const key = keys[0];
+  const res = await fetch(`${BUCKET}/${key}`);
+  if (!res.ok) throw new Error(`Radar file fetch failed: ${res.status}`);
+  return { data: await res.arrayBuffer(), key, time: timeFromKey(key) };
+}
+
+// The last `count` scans (oldest → newest) for the animation loop.
+export async function fetchRecentL3(siteId: string, prod: string, count: number): Promise<L3Fetch[]> {
+  const keys = await recentKeys(siteId, prod, count);
+  const out = await Promise.all(
+    keys.map(async (key) => {
+      const res = await fetch(`${BUCKET}/${key}`);
+      if (!res.ok) return null;
+      return { data: await res.arrayBuffer(), key, time: timeFromKey(key) };
+    })
+  );
+  return out.filter((r): r is L3Fetch => r !== null);
 }
