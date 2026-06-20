@@ -44,19 +44,41 @@ async function getDecoder() {
         productDescription?: unknown;
       };
       const tmpl = (tmplMod.default ?? tmplMod) as { productDescription: { halfwords30_53: unknown } };
-      const add = (code: string, abbr: string[], description: string) => {
+      const add = (code: string, abbr: string[], description: string, hw?: unknown) => {
         if (!reg.products[code]) {
           reg.products[code] = {
             code: Number(code),
             abbreviation: abbr,
             description,
-            productDescription: { halfwords30_53: tmpl.productDescription.halfwords30_53 },
+            productDescription: { halfwords30_53: hw ?? tmpl.productDescription.halfwords30_53 },
           };
           reg.productAbbreviations.push(...abbr);
         }
       };
+
+      // Dual-pol products (CC/ZDR/KDP) store their scale + offset as IEEE float32
+      // (not scaled shorts like reflectivity), so value = (level - offset)/scale.
+      // The packet decoder applies min + level*inc, so we hand it min = -offset/
+      // scale and inc = 1/scale. compressionMethod + uncompressedProductSize live
+      // at the same byte positions for all digital products and are required for
+      // the (bzip-compressed) symbology to be decompressed.
+      const dualPol = (data: Buffer | Uint8Array) => {
+        const b = Buffer.isBuffer(data) ? data : Buffer.from(data);
+        const scale = b.readFloatBE(2);
+        const offset = b.readFloatBE(6);
+        return {
+          elevationAngle: b.readInt16BE(0) / 10,
+          plot: { minimumDataValue: -offset / scale, dataIncrement: 1 / scale, dataLevels: 256 },
+          compressionMethod: b.readInt16BE(42),
+          uncompressedProductSize: (b.readUInt16BE(44) << 16) + b.readUInt16BE(46),
+        };
+      };
+
       add('153', ['N0B', 'N1B', 'N2B', 'N3B'], 'Super-Res Base Reflectivity');
       add('154', ['N0G', 'N1G', 'N2G', 'N3G'], 'Super-Res Base Velocity');
+      add('161', ['N0C', 'N1C', 'N2C', 'N3C'], 'Correlation Coefficient', dualPol);
+      add('159', ['N0X', 'N1X', 'N2X', 'N3X'], 'Differential Reflectivity', dualPol);
+      add('163', ['N0K', 'N1K', 'N2K', 'N3K'], 'Specific Differential Phase', dualPol);
 
       const mod = (await import('nexrad-level-3-data')) as unknown as {
         default?: (buf: Buffer, opts: unknown) => unknown;

@@ -238,8 +238,10 @@ input[type="range"].slider::-moz-range-thumb { width: 16px; height: 16px; border
   background: color-mix(in srgb, var(--bg) 82%, transparent);
   backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
   border: 1px solid var(--border); border-radius: 12px; max-width: 94%;
+  overflow-x: auto; scrollbar-width: none;
 }
-.radar-products button { padding: 7px 10px; border-radius: 9px; font-size: 12px; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+.radar-products::-webkit-scrollbar { display: none; }
+.radar-products button { flex: 0 0 auto; padding: 7px 10px; border-radius: 9px; font-size: 12px; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
 .radar-products button.on { background: var(--primary); color: #fff; }
 
 /* Satellite toggle (below the product switcher) */

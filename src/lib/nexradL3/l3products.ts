@@ -76,6 +76,41 @@ function hydroColor(v: number): string | null {
   return '#f800fd'; // unknown / large hail
 }
 
+// ---- Correlation coefficient (N0C) — high (~1) = uniform precip, low = mixed
+// or non-meteorological (a low-CC "debris ball" inside a storm = tornado debris). ----
+function ccColor(v: number): string | null {
+  if (v < 0.2) return null;
+  if (v >= 0.97) return '#3b6fd4'; // blue — uniform rain/snow
+  if (v >= 0.90) return '#3fa9c6'; // teal
+  if (v >= 0.80) return '#3fb53f'; // green
+  if (v >= 0.70) return '#d6d630'; // yellow
+  if (v >= 0.55) return '#e08a2e'; // orange
+  return '#d83838'; // red — debris / non-weather
+}
+
+// ---- Differential reflectivity (N0X / ZDR, dB) — ~0 spherical (hail/drizzle),
+// positive = oblate (rain, big drops), negative = ice/odd. ----
+function zdrColor(v: number): string | null {
+  if (v <= -2) return '#5a4fd0'; // purple — strongly negative
+  if (v < 0.3) return '#7a8a9a'; // grey — near zero (spherical)
+  if (v < 1) return '#3fb53f'; // green
+  if (v < 2) return '#9fd630'; // light green
+  if (v < 3) return '#e0d62e'; // yellow
+  if (v < 4.5) return '#e08a2e'; // orange — big drops
+  return '#d83838'; // red — very large drops / melting hail
+}
+
+// ---- Specific differential phase (N0K / KDP, deg/km) — scales with liquid
+// water; high = heavy rain. ----
+function kdpColor(v: number): string | null {
+  if (v < 0.2) return null; // little/no liquid
+  if (v < 0.5) return '#3b6fd4'; // blue
+  if (v < 1) return '#3fb53f'; // green
+  if (v < 2) return '#e0d62e'; // yellow
+  if (v < 3.5) return '#e08a2e'; // orange
+  return '#d83838'; // red — heavy rain
+}
+
 export const L3_PRODUCTS: Record<string, L3ProductDef> = {
   velocity: {
     key: 'velocity', label: 'Velocity', short: 'V', prod: 'N0G', kind: 'value',
@@ -93,5 +128,17 @@ export const L3_PRODUCTS: Record<string, L3ProductDef> = {
   reflSite: {
     key: 'reflSite', label: 'Reflectivity (site)', short: 'BR', prod: 'N0B', kind: 'value',
     units: 'dBZ', legend: 'Single-site super-res · light → heavy (dBZ)', color: reflColor,
+  },
+  cc: {
+    key: 'cc', label: 'Corr. Coeff', short: 'CC', prod: 'N0C', kind: 'value',
+    units: '', legend: 'Correlation — blue/green = uniform precip · red = debris / non-weather', color: ccColor,
+  },
+  zdr: {
+    key: 'zdr', label: 'Diff. Refl', short: 'ZDR', prod: 'N0X', kind: 'value',
+    units: 'dB', legend: 'Differential reflectivity — green→red = bigger drops · purple = negative', color: zdrColor,
+  },
+  kdp: {
+    key: 'kdp', label: 'KDP', short: 'KDP', prod: 'N0K', kind: 'value',
+    units: '°/km', legend: 'Specific differential phase — yellow/red = heavy rain', color: kdpColor,
   },
 };

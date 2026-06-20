@@ -29,11 +29,14 @@ const refUrl = (idx: number) => `${IEM}/nexrad-n0q-900913${FRAMES[idx].suffix}/{
 
 // 'ref' = nationwide IEM mosaic (tiles, animated). The rest are single-site
 // Level 3 products decoded + rendered client-side from the AWS bucket.
-type Product = 'ref' | 'velocity' | 'srv' | 'hydro';
+type Product = 'ref' | 'velocity' | 'srv' | 'cc' | 'zdr' | 'kdp' | 'hydro';
 const PRODUCTS: { key: Product; label: string; long: string }[] = [
   { key: 'ref', label: 'Reflectivity', long: 'Base Reflectivity' },
   { key: 'velocity', label: 'Velocity', long: 'Base Velocity' },
   { key: 'srv', label: 'Storm-Rel', long: 'Storm-Relative Velocity' },
+  { key: 'cc', label: 'CC', long: 'Correlation Coefficient' },
+  { key: 'zdr', label: 'ZDR', long: 'Differential Reflectivity' },
+  { key: 'kdp', label: 'KDP', long: 'Specific Differential Phase' },
   { key: 'hydro', label: 'Hydro', long: 'Hydrometeor Classification' },
 ];
 
