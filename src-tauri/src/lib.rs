@@ -5,6 +5,7 @@ pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_http::init())
+    .plugin(tauri_plugin_notification::init())
     .invoke_handler(tauri::generate_handler![oauth::start_google_oauth])
     .setup(|app| {
       if cfg!(debug_assertions) {

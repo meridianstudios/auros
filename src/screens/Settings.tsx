@@ -3,6 +3,7 @@ import { Moon, Sun, Bell, ExternalLink } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
 import { usePrefs, type NotifyPrefs } from '../lib/prefs';
 import { notify } from '../lib/notify';
+import { isNative } from '../lib/platform';
 
 function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -29,7 +30,10 @@ export function Settings() {
 
   const test = async () => {
     const ok = await notify('Auros test', 'Notifications are working.');
-    setMsg(ok ? 'Sent — check your notifications.' : 'Blocked — enable notifications in browser/site settings.');
+    const blocked = isNative
+      ? 'Blocked — enable Auros in Windows notification settings.'
+      : 'Blocked — enable notifications in your browser/site settings.';
+    setMsg(ok ? 'Sent — check your notifications.' : blocked);
   };
 
   return (
@@ -85,8 +89,8 @@ export function Settings() {
         <div className="label">Notifications</div>
         <div className="card">
           <div className="muted" style={{ fontSize: 14, lineHeight: 1.55 }}>
-            Notifications fire while the app is open. Background push (even when closed) arrives in Phase 3 with a
-            service worker + server.
+            Notifications fire while the app is open{isNative ? ' — as native Windows alerts' : ''}. Background
+            alerts when it&rsquo;s closed are coming in a later update.
           </div>
           <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={test}><Bell size={16} /> Send a test notification</button>
           {msg && <div className="muted" style={{ fontSize: 13, marginTop: 10 }}>{msg}</div>}
