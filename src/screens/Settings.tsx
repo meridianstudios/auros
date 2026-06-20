@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Moon, Sun, Bell, ExternalLink } from 'lucide-react';
+import { Moon, Sun, Bell, ExternalLink, Siren } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
 import { usePrefs, type NotifyPrefs } from '../lib/prefs';
 import { notify } from '../lib/notify';
@@ -94,6 +94,16 @@ export function Settings() {
           </div>
           <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={test}><Bell size={16} /> Send a test notification</button>
           {msg && <div className="muted" style={{ fontSize: 13, marginTop: 10 }}>{msg}</div>}
+          <button
+            className="btn btn-ghost"
+            style={{ marginTop: 10 }}
+            onClick={() => window.dispatchEvent(new CustomEvent('auros:test-alarm'))}
+          >
+            <Siren size={16} /> Test the alert alarm (box + sound)
+          </button>
+          <div className="dim" style={{ fontSize: 12, marginTop: 8, lineHeight: 1.5 }}>
+            Plays the EAS-style tone and shows the alert box, as if a new warning were issued.
+          </div>
         </div>
 
         <div className="label">About</div>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { TriangleAlert } from 'lucide-react';
 import { getActiveAlerts, type NwsAlert } from '../api/nws';
 import { useLocations } from '../context/LocationsContext';
@@ -32,6 +32,28 @@ export function AlertAlarm() {
 
   useEffect(() => { initAudioUnlock(); }, []);
 
+  const triggerAlarm = useCallback((a: NwsAlert) => {
+    stopTone.current?.();
+    stopTone.current = playEasAttention(rank(a.event) >= 4 ? 10 : 7);
+    setActive(a);
+  }, []);
+
+  // Settings "Test the alarm" button fires this so the box + tone can be
+  // previewed without waiting for a real alert.
+  useEffect(() => {
+    const onTest = () => triggerAlarm({
+      id: 'auros-test',
+      event: 'Alarm Test',
+      severity: 'Extreme',
+      headline: 'This is a test of the Auros alert alarm.',
+      areaDesc: 'Test — no actual alert is in effect.',
+      instruction: 'No action needed. If you can see this box and hear the tone, alerts are working.',
+      ends: new Date(Date.now() + 1_800_000).toISOString(),
+    });
+    window.addEventListener('auros:test-alarm', onTest);
+    return () => window.removeEventListener('auros:test-alarm', onTest);
+  }, [triggerAlarm]);
+
   // New location → forget what we'd seen so we don't alarm for its existing alerts.
   useEffect(() => {
     seen.current = new Set();
@@ -54,17 +76,12 @@ export function AlertAlarm() {
       const alarmable = fresh
         .filter((a) => shouldNotifyAlert(a.event, prefs))
         .sort((a, b) => rank(b.event) - rank(a.event));
-      if (alarmable.length) {
-        const a = alarmable[0];
-        stopTone.current?.();
-        stopTone.current = playEasAttention(rank(a.event) >= 4 ? 10 : 7);
-        setActive(a);
-      }
+      if (alarmable.length) triggerAlarm(alarmable[0]);
     };
     poll();
     const t = setInterval(poll, POLL_MS);
     return () => { cancelled = true; clearInterval(t); };
-  }, [selected.lat, selected.lon, prefs]);
+  }, [selected.lat, selected.lon, prefs, triggerAlarm]);
 
   useEffect(() => () => stopTone.current?.(), []);
 
