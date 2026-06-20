@@ -33,27 +33,30 @@ function reflColor(dbz: number): string | null {
   return c;
 }
 
-// ---- Velocity (N0G) — diverging with a GREY center (like Supercell-Wx):
-// calm / inbound-meets-outbound reads neutral grey, and only strong motion
-// saturates to green (toward radar) / red (away). Makes rotation couplets pop
-// instead of the whole disc being a green/red wash. ----
-const VEL_BASE = 105; // neutral grey for weak / transition velocities
-const VEL_MAX = 48; // m/s at which color is fully saturated
+// ---- Velocity (N0G) — green toward the radar, red away, brightness scaling
+// with speed (like Supercell-Wx). It is ALWAYS coloured — grey appears only on
+// the thin zero-velocity line where inbound meets outbound, not as a resting
+// zone. ----
+const VEL_MAX = 42; // m/s for full brightness
+const VEL_ZERO = 1; // |v| below this = the zero isodop (grey)
 function velColor(ms: number): string | null {
+  if (Math.abs(ms) < VEL_ZERO) return 'rgb(120,120,120)'; // inbound meets outbound
   const a = Math.min(Math.abs(ms) / VEL_MAX, 1);
-  const side = Math.round(VEL_BASE * (1 - a));
-  const main = Math.round(VEL_BASE + (240 - VEL_BASE) * a);
+  const main = Math.round(110 + 145 * a); // 110 (weak) -> 255 (strong)
+  const side = Math.round(18 + 26 * a);
   if (ms < 0) return `rgb(${side},${main},${side})`; // inbound -> green
   return `rgb(${main},${side},${side})`; // outbound -> red
 }
 
-// ---- Storm-relative velocity (N0S) — 16 run-length levels, grey-centered ----
+// ---- Storm-relative velocity (N0S) — 16 run-length levels; grey only on the
+// center (level 8) zero line, solid green/red otherwise. ----
 function srvColor(level: number): string | null {
   if (level === 0) return null;
   if (level >= 15) return '#9b30ff'; // range folding
+  if (level === 8) return 'rgb(120,120,120)'; // zero line
   const a = Math.abs(level - 8) / 7;
-  const side = Math.round(VEL_BASE * (1 - a));
-  const main = Math.round(VEL_BASE + (240 - VEL_BASE) * a);
+  const main = Math.round(110 + 145 * a);
+  const side = Math.round(18 + 26 * a);
   if (level < 8) return `rgb(${side},${main},${side})`;
   return `rgb(${main},${side},${side})`;
 }
@@ -76,7 +79,7 @@ function hydroColor(v: number): string | null {
 export const L3_PRODUCTS: Record<string, L3ProductDef> = {
   velocity: {
     key: 'velocity', label: 'Velocity', short: 'V', prod: 'N0G', kind: 'value',
-    units: 'kt', legend: 'Grey = calm · green = toward radar · red = away — a tight green/red pair is rotation',
+    units: 'kt', legend: 'Green = toward radar · red = away · grey = zero line — a tight green/red pair is rotation',
     display: (v) => v * 1.94384, color: velColor,
   },
   srv: {
