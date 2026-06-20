@@ -2,8 +2,15 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// Tauri sets TAURI_ENV_* env vars when it runs this build — use that to bake a
+// reliable "native app" flag into the bundle (runtime webview detection was
+// unreliable on Windows). Web builds (no TAURI_ENV) get false.
+const isTauriBuild = !!process.env.TAURI_ENV_PLATFORM;
+console.log('[build] native (Tauri):', isTauriBuild, process.env.TAURI_ENV_PLATFORM || '(web)');
+
 // https://vite.dev/config/
 export default defineConfig({
+  define: { __IS_NATIVE__: JSON.stringify(isTauriBuild) },
   plugins: [
     react(),
     VitePWA({

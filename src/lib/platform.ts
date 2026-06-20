@@ -1,8 +1,10 @@
 // True when running inside the native Tauri shell (desktop/mobile app) vs the
-// web/PWA. The injected globals can be timing-sensitive, so the most reliable
-// signal is the origin Tauri serves from: http(s)://tauri.localhost on Windows,
-// tauri://localhost on macOS/Linux/mobile.
-function detectNative(): boolean {
+// web/PWA. Primary signal is a build-time flag baked in by Vite (set true only
+// when Tauri runs the build — see vite.config.ts); a runtime origin/globals
+// check is kept as a fallback.
+declare const __IS_NATIVE__: boolean;
+
+function detectNativeRuntime(): boolean {
   if (typeof window === 'undefined') return false;
   const w = window as unknown as Record<string, unknown>;
   if (w.__TAURI_INTERNALS__ || w.__TAURI__ || w.isTauri) return true;
@@ -10,4 +12,4 @@ function detectNative(): boolean {
   return protocol === 'tauri:' || hostname === 'tauri.localhost' || hostname.endsWith('.tauri.localhost');
 }
 
-export const isNative = detectNative();
+export const isNative: boolean = __IS_NATIVE__ || detectNativeRuntime();
