@@ -8,7 +8,7 @@ import { getAlertGeometries, getActiveWarnings } from '../api/nws';
 import { severityColor } from '../theme/colors';
 import { useTropical } from '../hooks/useTropical';
 import { category, catColor } from '../api/tropical';
-import { nearestSite } from '../data/nexradSites';
+import { NEXRAD_SITES, nearestSite, type NexradSite } from '../data/nexradSites';
 import { fetchLatestL3 } from '../api/nexrad';
 import { decodeL3 } from '../lib/nexradL3/decode';
 import { L3_PRODUCTS } from '../lib/nexradL3/l3products';
@@ -57,6 +57,14 @@ export function Radar() {
   const [playing, setPlaying] = useState(false); // open paused on the most-recent frame
   const [satellite, setSatellite] = useState(false);
   const [l3, setL3] = useState<L3State>({ status: 'idle' });
+  // Which radar site feeds the L3 products. Defaults to nearest; the user can
+  // click another station's dot on the map to switch.
+  const [l3Site, setL3Site] = useState<NexradSite | null>(null);
+
+  // Reset to the nearest site whenever the selected location changes.
+  useEffect(() => {
+    setL3Site(nearestSite(selected.lat, selected.lon));
+  }, [selected.lat, selected.lon]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -170,8 +178,9 @@ export function Radar() {
     const map = mapRef.current;
     if (!map || !satellite) return;
     const layer = L.tileLayer(`${IEM}/goes_east_conus_ch13/{z}/{x}/{y}.png`, {
-      opacity: 0.8,
+      opacity: 0.55,
       zIndex: 3,
+      className: 'sat-ir',
       maxNativeZoom: 9,
       maxZoom: 16,
       errorTileUrl: TRANSPARENT,
@@ -212,10 +221,10 @@ export function Radar() {
     };
     if (product === 'ref') { clearL3(); setL3({ status: 'idle' }); return; }
     const def = L3_PRODUCTS[product];
-    if (!def) { clearL3(); return; }
+    if (!def || !l3Site) { clearL3(); return; }
 
     let cancelled = false;
-    const site = nearestSite(selected.lat, selected.lon);
+    const site = l3Site;
     setL3({ status: 'loading', site: site.id });
 
     const load = async () => {
@@ -241,7 +250,33 @@ export function Radar() {
     load();
     const timer = setInterval(load, L3_REFRESH_MS);
     return () => { cancelled = true; clearInterval(timer); clearL3(); };
-  }, [product, selected.lat, selected.lon, scheme]);
+  }, [product, l3Site, scheme]);
+
+  // Radar-station dots (L3 products only) — click one to switch which radar the
+  // velocity/etc. is read from. Live in markerPane so they sit above the radial
+  // canvas and stay clickable.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || product === 'ref') return;
+    const group = L.layerGroup().addTo(map);
+    NEXRAD_SITES.forEach((s) => {
+      const active = !!l3Site && s.id === l3Site.id;
+      const size = active ? 20 : 12;
+      const marker = L.marker([s.lat, s.lon], {
+        title: `${s.id} · ${s.name}`,
+        icon: L.divIcon({
+          className: '',
+          html: `<div class="radar-site-dot${active ? ' active' : ''}"></div>`,
+          iconSize: [size, size],
+          iconAnchor: [size / 2, size / 2],
+        }),
+        zIndexOffset: active ? 1000 : 0,
+      });
+      marker.on('click', () => setL3Site(s));
+      marker.addTo(group);
+    });
+    return () => { try { map.removeLayer(group); } catch { /* noop */ } };
+  }, [product, l3Site, scheme]);
 
   const cur = FRAMES[idx];
   const stamp = cur.minsAgo === 0 ? 'Now' : `${cur.minsAgo} min ago`;
@@ -282,6 +317,9 @@ export function Radar() {
         <button className={`radar-sat ${satellite ? 'on' : ''}`} onClick={() => setSatellite((s) => !s)}>
           <Cloud size={13} /> Satellite
         </button>
+        {satellite && (
+          <div className="radar-sat-legend">Infrared satellite · bright = colder, higher cloud tops (storms)</div>
+        )}
 
         {l3def && l3.status === 'loading' && (
           <div className="radar-l3-badge">
@@ -289,7 +327,7 @@ export function Radar() {
           </div>
         )}
         {l3def && l3.status === 'ok' && (
-          <div className="radar-legend">{l3def.legend}</div>
+          <div className="radar-legend">{l3def.legend} · tap a dot to switch radar</div>
         )}
         {l3def && l3.status === 'error' && (
           <div className="radar-msg">
