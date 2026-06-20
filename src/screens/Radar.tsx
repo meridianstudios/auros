@@ -28,6 +28,8 @@ const PRODUCTS: { key: Product; label: string; long: string }[] = [
   { key: 'cc', label: 'Corr. Coeff', long: 'Correlation Coefficient' },
 ];
 
+const ALERT_REFRESH_MS = 120_000; // re-fetch alert overlays every 2 min
+
 export function Radar() {
   const { selected } = useLocations();
   const { scheme } = useTheme();
@@ -78,36 +80,34 @@ export function Radar() {
       attribution: 'NEXRAD: NWS / Iowa Environmental Mesonet',
     }).addTo(map);
 
-    // Overlay active warning/watch polygons, colored by severity.
-    getAlertGeometries(selected.lat, selected.lon)
-      .then((alerts) => {
-        if (cancelled) return;
-        alerts.forEach((a) => {
-          const c = severityColor(a.severity, a.event);
-          L.geoJSON(a.geometry as never, { style: { color: c, weight: 2, fillColor: c, fillOpacity: 0.12 } })
-            .bindPopup(`<b>${a.event}</b>`)
-            .addTo(map);
-        });
-      })
-      .catch(() => {});
-
-    // Nationwide warning/watch polygons — zoom out to see warnings anywhere.
-    getActiveWarnings()
-      .then((warnings) => {
-        if (cancelled) return;
-        warnings.forEach((a) => {
-          const c = severityColor(a.severity, a.event);
-          L.geoJSON(a.geometry as never, { style: { color: c, weight: 1.4, fillColor: c, fillOpacity: 0.08 } })
-            .bindPopup(`<b>${a.event}</b>`)
-            .addTo(map);
-        });
-      })
-      .catch(() => {});
+    // Alert overlays (local advisories + nationwide warnings) live in a layer
+    // group that is re-fetched on an interval, so expired alerts drop off, new
+    // ones appear, and updates are reflected — not a static one-shot draw.
+    const alertGroup = L.layerGroup().addTo(map);
+    const drawAlerts = async () => {
+      const [local, natl] = await Promise.all([
+        getAlertGeometries(selected.lat, selected.lon).catch(() => [] as Awaited<ReturnType<typeof getAlertGeometries>>),
+        getActiveWarnings().catch(() => [] as Awaited<ReturnType<typeof getActiveWarnings>>),
+      ]);
+      if (cancelled) return;
+      alertGroup.clearLayers();
+      const add = (a: { event: string; severity?: string; geometry: unknown }, weight: number, fillOpacity: number) => {
+        const c = severityColor(a.severity, a.event);
+        L.geoJSON(a.geometry as never, { style: { color: c, weight, fillColor: c, fillOpacity } })
+          .bindPopup(`<b>${a.event}</b>`)
+          .addTo(alertGroup);
+      };
+      natl.forEach((a) => add(a, 1.4, 0.08)); // nationwide, lighter
+      local.forEach((a) => add(a, 2, 0.12)); // selected area, on top
+    };
+    drawAlerts();
+    const alertTimer = setInterval(drawAlerts, ALERT_REFRESH_MS);
 
     return () => {
       cancelled = true;
       clearTimeout(t1);
       clearTimeout(t2);
+      clearInterval(alertTimer);
       ro.disconnect();
       map.remove();
       mapRef.current = null;

@@ -74,5 +74,11 @@ export function useWeather(lat: number, lon: number): UseWeather {
 
   useEffect(() => { refresh(); }, [refresh]);
 
+  // Keep alerts / forecast / notifications current while the app stays open.
+  useEffect(() => {
+    const t = setInterval(() => { refresh(); }, 300_000); // every 5 min
+    return () => clearInterval(t);
+  }, [refresh]);
+
   return { point, current, hourly, daily, timeline, risk, riskTomorrow, riskError, alerts, loading, error, refresh };
 }

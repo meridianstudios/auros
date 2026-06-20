@@ -7,10 +7,10 @@ export function useTropical(): Tropical | null {
   const [data, setData] = useState<Tropical | null>(null);
   useEffect(() => {
     let active = true;
-    getTropical()
-      .then((t) => { if (active) setData(t); })
-      .catch(() => { if (active) setData(null); });
-    return () => { active = false; };
+    const load = () => getTropical().then((t) => { if (active) setData(t); }).catch(() => { /* keep last good data */ });
+    load();
+    const timer = setInterval(load, 300_000); // refresh every 5 min
+    return () => { active = false; clearInterval(timer); };
   }, []);
   return data;
 }
