@@ -8,15 +8,15 @@ import { getAlertGeometries, getActiveWarnings } from '../api/nws';
 import { severityColor } from '../theme/colors';
 import { useTropical } from '../hooks/useTropical';
 import { category, catColor } from '../api/tropical';
+import { isNative } from '../lib/platform';
 
 const TRANSPARENT =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/QBYAAAAAElFTkSuQmCC';
 
 const IEM = 'https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0';
 
-// Native (Tauri) app vs web/PWA — single-site Level-3 products (velocity, CC) are
-// gated to the app; the web build points people to the download instead.
-const IS_NATIVE = typeof window !== 'undefined' && ('__TAURI_INTERNALS__' in window || '__TAURI__' in window);
+// Single-site Level-3 products (velocity, CC) are gated to the app; the web build
+// points people to the download instead.
 const APP_DOWNLOAD_URL = 'https://meridian.novalabsos.com';
 
 // Reflectivity = national mosaic, animated (current + 5-min-lagged frames).
@@ -203,7 +203,7 @@ export function Radar() {
         <div className="radar-float">
           <div className="radar-pill" style={{ pointerEvents: 'auto' }}>
             <div className="ttl">{meta.long}</div>
-            <div className="sub">{product === 'ref' ? selected.name : IS_NATIVE ? 'Coming soon' : 'App only'}</div>
+            <div className="sub">{product === 'ref' ? selected.name : isNative ? 'Coming soon' : 'App only'}</div>
           </div>
         </div>
         <div className="radar-products">
@@ -222,7 +222,7 @@ export function Radar() {
             <div className="radar-msg-card">
               <Lock size={22} />
               <div style={{ fontWeight: 700, marginTop: 8 }}>{meta.long}</div>
-              {IS_NATIVE ? (
+              {isNative ? (
                 <p>
                   Single-site velocity &amp; correlation-coefficient are coming soon to Auros. Reflectivity is fully live now.
                 </p>

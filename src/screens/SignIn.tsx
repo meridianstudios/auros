@@ -11,6 +11,7 @@ function prettyErr(e: unknown): string {
   if (c.includes('weak-password')) return 'Password should be at least 6 characters.';
   if (c.includes('invalid-email')) return 'That email looks invalid.';
   if (c.includes('popup-closed')) return 'Google sign-in was cancelled.';
+  if (c.includes('argument-error') || c.includes('operation-not-supported')) return 'Google sign-in isn’t available here — use email & password.';
   return (e as { message?: string })?.message || 'Something went wrong.';
 }
 

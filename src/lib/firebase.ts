@@ -11,6 +11,7 @@ import {
   type Auth,
 } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
+import { isNative } from './platform';
 
 const cfg = {
   apiKey: import.meta.env.VITE_FB_API_KEY,
@@ -27,18 +28,15 @@ let app: FirebaseApp | undefined;
 let auth: Auth | undefined;
 let db: Firestore | undefined;
 
-// In the native (Tauri) app the popup resolver loads Google's auth iframe (gapi),
-// which is CORS-blocked on the tauri:// origin and crashes boot — so omit it there
-// (email/password still works). The web/PWA keeps it for Google popup sign-in.
-const IS_NATIVE = typeof window !== 'undefined' && ('__TAURI_INTERNALS__' in window || '__TAURI__' in window);
-
 if (firebaseReady) {
   app = initializeApp(cfg);
   // Explicit local persistence so the session survives reloads and revisits
   // (the default resolution can fall back to in-memory, logging you out).
+  // Native (Tauri) omits the popup resolver — its gapi iframe is CORS-blocked on
+  // tauri:// (breaks Google popup + can crash boot); the web/PWA keeps it.
   auth = initializeAuth(app, {
     persistence: [indexedDBLocalPersistence, browserLocalPersistence],
-    ...(IS_NATIVE ? {} : { popupRedirectResolver: browserPopupRedirectResolver }),
+    ...(isNative ? {} : { popupRedirectResolver: browserPopupRedirectResolver }),
   });
   db = getFirestore(app);
 }
