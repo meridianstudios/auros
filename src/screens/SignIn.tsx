@@ -16,16 +16,17 @@ function prettyErr(e: unknown): string {
 }
 
 export function SignIn({ onNavigate }: { onNavigate: (v: View) => void }) {
-  const { signInEmail, signUpEmail, signInGoogle } = useAuth();
+  const { signInEmail, signUpEmail, signInGoogle, resetPassword } = useAuth();
   const [mode, setMode] = useState<'in' | 'up'>('in');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [pw, setPw] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
 
   const submit = async () => {
-    setBusy(true); setErr(null);
+    setBusy(true); setErr(null); setMsg(null);
     try {
       if (mode === 'up') await signUpEmail(name, email, pw);
       else await signInEmail(email, pw);
@@ -33,8 +34,16 @@ export function SignIn({ onNavigate }: { onNavigate: (v: View) => void }) {
     } catch (e) { setErr(prettyErr(e)); } finally { setBusy(false); }
   };
   const google = async () => {
-    setBusy(true); setErr(null);
+    setBusy(true); setErr(null); setMsg(null);
     try { await signInGoogle(); onNavigate('home'); } catch (e) { setErr(prettyErr(e)); } finally { setBusy(false); }
+  };
+  const forgot = async () => {
+    if (!email.trim()) { setMsg(null); setErr('Enter your email above first, then tap this again.'); return; }
+    setBusy(true); setErr(null); setMsg(null);
+    try {
+      await resetPassword(email.trim());
+      setMsg('Check your email for a link to set a password. After you set one, sign in here with your email and that password.');
+    } catch (e) { setErr(prettyErr(e)); } finally { setBusy(false); }
   };
 
   return (
@@ -51,9 +60,19 @@ export function SignIn({ onNavigate }: { onNavigate: (v: View) => void }) {
           <input className="input" style={{ marginBottom: 10 }} type="email" placeholder="Email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           <input className="input" type="password" placeholder="Password" autoComplete={mode === 'up' ? 'new-password' : 'current-password'} value={pw} onChange={(e) => setPw(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && submit()} />
           {err && <div style={{ color: 'var(--danger)', fontSize: 13, marginTop: 10 }}>{err}</div>}
+          {msg && <div style={{ color: 'var(--primary)', fontSize: 13, marginTop: 10, lineHeight: 1.4 }}>{msg}</div>}
           <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={submit} disabled={busy}>
             {busy ? '…' : mode === 'up' ? 'Create account' : 'Sign in'}
           </button>
+          {mode === 'in' && (
+            <button
+              style={{ display: 'block', margin: '12px auto 0', color: 'var(--text-dim)', fontSize: 13 }}
+              onClick={forgot}
+              disabled={busy}
+            >
+              Forgot password? <span style={{ color: 'var(--primary)' }}>Reset or set one</span>
+            </button>
+          )}
           {!isNative && (
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0', color: 'var(--text-dim)', fontSize: 12 }}>

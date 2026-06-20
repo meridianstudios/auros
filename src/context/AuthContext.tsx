@@ -4,6 +4,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
+  sendPasswordResetEmail,
   signOut,
   updateProfile,
   type User,
@@ -17,6 +18,7 @@ interface AuthValue {
   signInEmail: (email: string, pw: string) => Promise<void>;
   signUpEmail: (name: string, email: string, pw: string) => Promise<void>;
   signInGoogle: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -44,6 +46,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (name) await updateProfile(cred.user, { displayName: name });
     },
     signInGoogle: async () => { await signInWithPopup(auth!, googleProvider); },
+    // Works for Google-only accounts too: completing the reset sets a password,
+    // which adds the email/password provider so they can sign in without Google.
+    resetPassword: async (email) => { await sendPasswordResetEmail(auth!, email); },
     logout: async () => { await signOut(auth!); },
   };
 
