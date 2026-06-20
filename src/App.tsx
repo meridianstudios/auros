@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { House, Radar as RadarIcon, TriangleAlert, RadioTower, Settings as SettingsIcon, CloudSun } from 'lucide-react';
+import { House, Radar as RadarIcon, TriangleAlert, RadioTower, Settings as SettingsIcon, CloudSun, MoreHorizontal } from 'lucide-react';
 import { ThemeProvider } from './theme/ThemeContext';
 import { LocationsProvider } from './context/LocationsContext';
 import { PrefsProvider } from './lib/prefs';
@@ -29,7 +29,7 @@ function Shell() {
   const openMenu = () => setMenuOpen(true);
 
   const screen =
-    view === 'home' ? <Home onNavigate={setView} onMenu={openMenu} />
+    view === 'home' ? <Home onNavigate={setView} />
     : view === 'radar' ? <Radar />
     : view === 'alerts' ? <Alerts />
     : view === 'nwr' ? <Nwr />
@@ -37,10 +37,11 @@ function Shell() {
     : view === 'locations' ? <Locations />
     : view === 'forecast' ? <Forecast />
     : view === 'signin' ? <SignIn onNavigate={setView} />
-    : <Home onNavigate={setView} onMenu={openMenu} />;
+    : <Home onNavigate={setView} />;
 
   return (
     <div className="app">
+      <button className="menu-fab" aria-label="Menu" onClick={openMenu}><MoreHorizontal size={20} /></button>
       <main className="main">{screen}</main>
       <nav className="tabbar">
         <div className="nav-brand"><CloudSun size={20} /> Auros</div>

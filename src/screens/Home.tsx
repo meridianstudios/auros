@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { MapPin, ChevronDown, ChevronRight, ShieldCheck, CloudLightning, Zap, MoreHorizontal } from 'lucide-react';
+import { MapPin, ChevronDown, ChevronRight, ShieldCheck, CloudLightning, Zap } from 'lucide-react';
 import { useLocations } from '../context/LocationsContext';
 import { useWeather } from '../hooks/useWeather';
 import { usePrefs, convertTemp, shouldNotifyAlert, isQuietNow } from '../lib/prefs';
@@ -10,7 +10,7 @@ import { notify } from '../lib/notify';
 import { formatTime } from '../utils/format';
 import type { View } from '../nav';
 
-export function Home({ onNavigate, onMenu }: { onNavigate: (v: View) => void; onMenu: () => void }) {
+export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
   const { selected } = useLocations();
   const { prefs } = usePrefs();
   const w = useWeather(selected.lat, selected.lon);
@@ -44,7 +44,6 @@ export function Home({ onNavigate, onMenu }: { onNavigate: (v: View) => void; on
     <div className="view fade home-view">
       <div className="app-header">
         <div className="brand"><Zap size={16} /> Auros</div>
-        <button className="icon-btn" aria-label="Menu" onClick={onMenu}><MoreHorizontal size={20} /></button>
       </div>
       <div className="hero">
         <button className="place" onClick={() => onNavigate('locations')}>

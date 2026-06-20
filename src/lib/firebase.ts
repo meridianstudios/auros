@@ -2,7 +2,14 @@
 // If config is absent the app runs fully in local-only mode (auth disabled).
 
 import { initializeApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, type Auth } from 'firebase/auth';
+import {
+  initializeAuth,
+  indexedDBLocalPersistence,
+  browserLocalPersistence,
+  browserPopupRedirectResolver,
+  GoogleAuthProvider,
+  type Auth,
+} from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 
 const cfg = {
@@ -22,7 +29,13 @@ let db: Firestore | undefined;
 
 if (firebaseReady) {
   app = initializeApp(cfg);
-  auth = getAuth(app);
+  // Explicit local persistence so the session survives reloads and revisits.
+  // (getAuth's default resolution can fall back to in-memory in some browsers,
+  // which logs you out on every visit.) Keep the popup resolver for Google sign-in.
+  auth = initializeAuth(app, {
+    persistence: [indexedDBLocalPersistence, browserLocalPersistence],
+    popupRedirectResolver: browserPopupRedirectResolver,
+  });
   db = getFirestore(app);
 }
 
