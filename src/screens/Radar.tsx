@@ -14,6 +14,11 @@ const TRANSPARENT =
 
 const IEM = 'https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0';
 
+// Native (Tauri) app vs web/PWA — single-site Level-3 products (velocity, CC) are
+// gated to the app; the web build points people to the download instead.
+const IS_NATIVE = typeof window !== 'undefined' && ('__TAURI_INTERNALS__' in window || '__TAURI__' in window);
+const APP_DOWNLOAD_URL = 'https://meridian.novalabsos.com';
+
 // Reflectivity = national mosaic, animated (current + 5-min-lagged frames).
 interface Frame { suffix: string; minsAgo: number }
 const FRAMES: Frame[] = [50, 45, 40, 35, 30, 25, 20, 15, 10, 5, 0].map((m) => ({
@@ -198,7 +203,7 @@ export function Radar() {
         <div className="radar-float">
           <div className="radar-pill" style={{ pointerEvents: 'auto' }}>
             <div className="ttl">{meta.long}</div>
-            <div className="sub">{product === 'ref' ? selected.name : 'Planned · Phase 3'}</div>
+            <div className="sub">{product === 'ref' ? selected.name : IS_NATIVE ? 'Coming soon' : 'App only'}</div>
           </div>
         </div>
         <div className="radar-products">
@@ -217,11 +222,21 @@ export function Radar() {
             <div className="radar-msg-card">
               <Lock size={22} />
               <div style={{ fontWeight: 700, marginTop: 8 }}>{meta.long}</div>
-              <p>
-                Single-radar velocity &amp; correlation-coefficient are NEXRAD Level III products — there's no free
-                map layer for them. They need a small backend that decodes the raw radar feed and renders tiles, which
-                is part of the Phase 3 server work. Reflectivity is fully live now.
-              </p>
+              {IS_NATIVE ? (
+                <p>
+                  Single-site velocity &amp; correlation-coefficient are coming soon to Auros. Reflectivity is fully live now.
+                </p>
+              ) : (
+                <>
+                  <p>
+                    Single-site velocity &amp; correlation-coefficient render in the Auros desktop &amp; mobile app.
+                    Reflectivity stays fully live here on the web.
+                  </p>
+                  <a className="btn btn-primary" href={APP_DOWNLOAD_URL} target="_blank" rel="noreferrer" style={{ marginTop: 12, width: 'auto' }}>
+                    Get the app ↗
+                  </a>
+                </>
+              )}
             </div>
           </div>
         )}
