@@ -39,7 +39,7 @@ export function Radar() {
 
   const [product, setProduct] = useState<Product>('ref');
   const [idx, setIdx] = useState(FRAMES.length - 1);
-  const [playing, setPlaying] = useState(true);
+  const [playing, setPlaying] = useState(false); // open paused on the most-recent frame
 
   useEffect(() => {
     const el = containerRef.current;
