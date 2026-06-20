@@ -14,6 +14,9 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      // No service worker in the native app — assets are served locally, and a SW
+      // just caches a stale frontend in the WebView profile (survives reinstalls).
+      disable: isTauriBuild,
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       includeAssets: ['icon.svg'],
