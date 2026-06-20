@@ -2,8 +2,13 @@ import { useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { isNative } from '../lib/platform';
+import { googleNativeReady } from '../lib/googleOauth';
 import { PasswordResetModal } from '../components/PasswordResetModal';
 import type { View } from '../nav';
+
+// Web always has Google (popup); the native app only when its OAuth client is
+// configured at build time (otherwise it stays hidden and email/password rules).
+const showGoogle = !isNative || googleNativeReady();
 
 function prettyErr(e: unknown): string {
   const c = (e as { code?: string })?.code || '';
@@ -65,7 +70,7 @@ export function SignIn({ onNavigate }: { onNavigate: (v: View) => void }) {
               Forgot password? <span style={{ color: 'var(--primary)' }}>Reset or set one</span>
             </button>
           )}
-          {!isNative && (
+          {showGoogle && (
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0', color: 'var(--text-dim)', fontSize: 12 }}>
                 <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />or<div style={{ flex: 1, height: 1, background: 'var(--border)' }} />

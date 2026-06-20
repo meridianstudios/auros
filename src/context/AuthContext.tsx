@@ -12,6 +12,7 @@ import {
   type User,
 } from 'firebase/auth';
 import { auth, googleProvider, firebaseReady } from '../lib/firebase';
+import { isNative } from '../lib/platform';
 
 interface AuthValue {
   ready: boolean; // Firebase configured?
@@ -50,7 +51,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const cred = await createUserWithEmailAndPassword(auth!, email, pw);
       if (name) await updateProfile(cred.user, { displayName: name });
     },
-    signInGoogle: async () => { await signInWithPopup(auth!, googleProvider); },
+    signInGoogle: async () => {
+      if (isNative) {
+        // Desktop: system-browser OAuth (the in-webview popup is blocked).
+        const { signInWithGoogleNative } = await import('../lib/googleOauth');
+        await signInWithGoogleNative(auth!);
+      } else {
+        await signInWithPopup(auth!, googleProvider);
+      }
+    },
     // Works for Google-only accounts too: completing the reset sets a password,
     // which adds the email/password provider so they can sign in without Google.
     resetPassword: async (email) => { await sendPasswordResetEmail(auth!, email); },
