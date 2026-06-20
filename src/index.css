@@ -391,3 +391,23 @@ input[type="range"].slider::-moz-range-thumb { width: 16px; height: 16px; border
 .reset-err { color: var(--danger); font-size: 13px; margin-top: 10px; line-height: 1.4; }
 @keyframes modal-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes modal-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ===== NEXRAD Level 3 radar overlays ===== */
+.radar-l3-badge {
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+  z-index: 600; display: flex; align-items: center; gap: 7px;
+  background: rgba(11, 16, 32, 0.82); color: #E7ECF5;
+  border: 0.5px solid rgba(255, 255, 255, 0.14);
+  padding: 7px 14px; border-radius: 999px; font-size: 13px;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); pointer-events: none;
+}
+.radar-legend {
+  position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+  z-index: 600; max-width: 92%; text-align: center;
+  background: rgba(11, 16, 32, 0.82); color: #cdd6e6;
+  border: 0.5px solid rgba(255, 255, 255, 0.14);
+  padding: 6px 14px; border-radius: 999px; font-size: 12px;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); pointer-events: none;
+}
+.radar-l3-badge .spin { animation: l3spin 1s linear infinite; }
+@keyframes l3spin { to { transform: rotate(360deg); } }

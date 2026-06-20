@@ -1,23 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Play, Pause, Lock, Cloud } from 'lucide-react';
+import { Play, Pause, Cloud, Loader } from 'lucide-react';
 import { useLocations } from '../context/LocationsContext';
 import { useTheme } from '../theme/ThemeContext';
 import { getAlertGeometries, getActiveWarnings } from '../api/nws';
 import { severityColor } from '../theme/colors';
 import { useTropical } from '../hooks/useTropical';
 import { category, catColor } from '../api/tropical';
-import { isNative } from '../lib/platform';
+import { nearestSite } from '../data/nexradSites';
+import { fetchLatestL3 } from '../api/nexrad';
+import { decodeL3 } from '../lib/nexradL3/decode';
+import { L3_PRODUCTS } from '../lib/nexradL3/l3products';
+import { createRadialLayer } from '../lib/nexradL3/RadialLayer';
 
 const TRANSPARENT =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/QBYAAAAAElFTkSuQmCC';
 
 const IEM = 'https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0';
-
-// Single-site Level-3 products (velocity, CC) are gated to the app; the web build
-// points people to the download instead.
-const APP_DOWNLOAD_URL = 'https://meridian.novalabsos.com';
 
 // Reflectivity = national mosaic, animated (current + 5-min-lagged frames).
 interface Frame { suffix: string; minsAgo: number }
@@ -27,14 +27,20 @@ const FRAMES: Frame[] = [50, 45, 40, 35, 30, 25, 20, 15, 10, 5, 0].map((m) => ({
 }));
 const refUrl = (idx: number) => `${IEM}/nexrad-n0q-900913${FRAMES[idx].suffix}/{z}/{x}/{y}.png`;
 
-type Product = 'ref' | 'vel' | 'cc';
+// 'ref' = nationwide IEM mosaic (tiles, animated). The rest are single-site
+// Level 3 products decoded + rendered client-side from the AWS bucket.
+type Product = 'ref' | 'velocity' | 'srv' | 'hydro';
 const PRODUCTS: { key: Product; label: string; long: string }[] = [
   { key: 'ref', label: 'Reflectivity', long: 'Base Reflectivity' },
-  { key: 'vel', label: 'Velocity', long: 'Base Velocity' },
-  { key: 'cc', label: 'Corr. Coeff', long: 'Correlation Coefficient' },
+  { key: 'velocity', label: 'Velocity', long: 'Base Velocity' },
+  { key: 'srv', label: 'Storm-Rel', long: 'Storm-Relative Velocity' },
+  { key: 'hydro', label: 'Hydro', long: 'Hydrometeor Classification' },
 ];
 
 const ALERT_REFRESH_MS = 120_000; // re-fetch alert overlays every 2 min
+const L3_REFRESH_MS = 150_000; // re-fetch the latest L3 scan every ~2.5 min
+
+type L3State = { status: 'idle' | 'loading' | 'ok' | 'error'; site?: string; time?: Date; msg?: string };
 
 export function Radar() {
   const { selected } = useLocations();
@@ -44,11 +50,13 @@ export function Radar() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const radarLayerRef = useRef<L.TileLayer | null>(null);
+  const l3LayerRef = useRef<L.Layer | null>(null);
 
   const [product, setProduct] = useState<Product>('ref');
   const [idx, setIdx] = useState(FRAMES.length - 1);
   const [playing, setPlaying] = useState(false); // open paused on the most-recent frame
   const [satellite, setSatellite] = useState(false);
+  const [l3, setL3] = useState<L3State>({ status: 'idle' });
 
   useEffect(() => {
     const el = containerRef.current;
@@ -120,6 +128,7 @@ export function Radar() {
       map.remove();
       mapRef.current = null;
       radarLayerRef.current = null;
+      l3LayerRef.current = null;
     };
   }, [selected.lat, selected.lon, scheme]);
 
@@ -171,9 +180,7 @@ export function Radar() {
     return () => { try { map.removeLayer(layer); } catch { /* noop */ } };
   }, [satellite, selected.lat, selected.lon, scheme]);
 
-  // Reflectivity drives the live tile layer. Velocity/CC have no free map layer
-  // (they need a Level III decoder backend — Phase 3), so we pull the layer off
-  // the map instead of showing IEM's error tiles.
+  // Reflectivity drives the live IEM tile layer (nationwide, animated).
   useEffect(() => {
     const map = mapRef.current;
     const layer = radarLayerRef.current;
@@ -192,9 +199,68 @@ export function Radar() {
     return () => clearInterval(t);
   }, [product, playing]);
 
+  // Level-3 products: fetch the nearest site's latest scan from the AWS bucket,
+  // decode it, and render the radials. Re-fetches on an interval while active.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const clearL3 = () => {
+      if (l3LayerRef.current) {
+        try { map.removeLayer(l3LayerRef.current); } catch { /* noop */ }
+        l3LayerRef.current = null;
+      }
+    };
+    if (product === 'ref') { clearL3(); setL3({ status: 'idle' }); return; }
+    const def = L3_PRODUCTS[product];
+    if (!def) { clearL3(); return; }
+
+    let cancelled = false;
+    const site = nearestSite(selected.lat, selected.lon);
+    setL3({ status: 'loading', site: site.id });
+
+    const load = async () => {
+      try {
+        const fetched = await fetchLatestL3(site.id, def.prod);
+        if (cancelled || !mapRef.current) return;
+        if (!fetched) { clearL3(); setL3({ status: 'error', site: site.id, msg: 'No recent scan available' }); return; }
+        const data = await decodeL3(fetched.data);
+        if (cancelled || !mapRef.current) return;
+        if (l3LayerRef.current) {
+          (l3LayerRef.current as unknown as { setData: (d: typeof data, p: typeof def) => void }).setData(data, def);
+        } else {
+          l3LayerRef.current = createRadialLayer(data, def);
+          l3LayerRef.current.addTo(map);
+        }
+        setL3({ status: 'ok', site: site.id, time: fetched.time });
+      } catch (e) {
+        if (cancelled) return;
+        clearL3();
+        setL3({ status: 'error', site: site.id, msg: (e as Error).message });
+      }
+    };
+    load();
+    const timer = setInterval(load, L3_REFRESH_MS);
+    return () => { cancelled = true; clearInterval(timer); clearL3(); };
+  }, [product, selected.lat, selected.lon, scheme]);
+
   const cur = FRAMES[idx];
   const stamp = cur.minsAgo === 0 ? 'Now' : `${cur.minsAgo} min ago`;
   const meta = PRODUCTS.find((p) => p.key === product)!;
+  const l3def = product !== 'ref' ? L3_PRODUCTS[product] : null;
+  const scanStamp = l3.time
+    ? l3.time.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    : '';
+
+  const pillSub =
+    product === 'ref'
+      ? selected.name
+      : l3.status === 'loading'
+        ? `Loading ${l3.site ?? ''}…`
+        : l3.status === 'ok'
+          ? `${l3.site} · ${scanStamp}`
+          : l3.status === 'error'
+            ? `${l3.site}: ${l3.msg}`
+            : l3.site ?? '';
 
   return (
     <div className="view radar-view fade" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
@@ -203,7 +269,7 @@ export function Radar() {
         <div className="radar-float">
           <div className="radar-pill" style={{ pointerEvents: 'auto' }}>
             <div className="ttl">{meta.long}</div>
-            <div className="sub">{product === 'ref' ? selected.name : isNative ? 'Coming soon' : 'App only'}</div>
+            <div className="sub">{pillSub}</div>
           </div>
         </div>
         <div className="radar-products">
@@ -217,26 +283,22 @@ export function Radar() {
           <Cloud size={13} /> Satellite
         </button>
 
-        {product !== 'ref' && (
+        {l3def && l3.status === 'loading' && (
+          <div className="radar-l3-badge">
+            <Loader size={13} className="spin" /> Decoding {l3def.label.toLowerCase()}…
+          </div>
+        )}
+        {l3def && l3.status === 'ok' && (
+          <div className="radar-legend">{l3def.legend}</div>
+        )}
+        {l3def && l3.status === 'error' && (
           <div className="radar-msg">
             <div className="radar-msg-card">
-              <Lock size={22} />
-              <div style={{ fontWeight: 700, marginTop: 8 }}>{meta.long}</div>
-              {isNative ? (
-                <p>
-                  Single-site velocity &amp; correlation-coefficient are coming soon to Auros. Reflectivity is fully live now.
-                </p>
-              ) : (
-                <>
-                  <p>
-                    Single-site velocity &amp; correlation-coefficient render in the Auros desktop &amp; mobile app.
-                    Reflectivity stays fully live here on the web.
-                  </p>
-                  <a className="btn btn-primary" href={APP_DOWNLOAD_URL} target="_blank" rel="noreferrer" style={{ marginTop: 12, width: 'auto' }}>
-                    Get the app ↗
-                  </a>
-                </>
-              )}
+              <div style={{ fontWeight: 700 }}>{l3def.label} unavailable</div>
+              <p>
+                Couldn’t load {l3def.label.toLowerCase()} from {l3.site}. {l3.msg}. The site may be in
+                clear-air mode or briefly offline — reflectivity stays live.
+              </p>
             </div>
           </div>
         )}
