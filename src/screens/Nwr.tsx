@@ -97,7 +97,7 @@ export function Nwr() {
               </div>
             </a>
             <div className="dim" style={{ fontSize: 11, marginBottom: 4, lineHeight: 1.5 }}>
-              Third-party stream — can lag 10s–2 min and won't alarm on its own. Not for life-safety; that's your radio + WEA.
+              Third-party stream — can lag 10s–2 min and won't alarm on its own.
             </div>
           </>
         )}

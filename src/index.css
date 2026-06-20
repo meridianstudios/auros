@@ -347,9 +347,11 @@ input[type="range"].slider::-moz-range-thumb { width: 16px; height: 16px; border
 
 /* ===== Desktop: home dashboard — wider + 2-column cards to fill the space ===== */
 @media (min-width: 1200px) {
-  .home-view { max-width: 1500px; }
+  .home-view { max-width: 1320px; }
   .home-view .dash { display: grid; grid-template-columns: 1.4fr 1fr; column-gap: 22px; align-items: start; }
-  .home-view .hero .temp { font-size: 96px; }
-  .home-view .hero-ic svg { width: 96px; height: 96px; }
-  .home-view .hourly .hour { flex: 1 1 0; width: auto; min-width: 66px; }
+  .home-view .hero .temp { font-size: 92px; }
+  .home-view .hero-ic svg { width: 84px; height: 84px; }
+  /* group the temperature + condition icon instead of pushing the icon to the far edge */
+  .home-view .hero-row { justify-content: flex-start; gap: 44px; align-items: center; }
+  .home-view .hero-ic { margin-top: 0; }
 }
