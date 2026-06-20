@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { Play, Pause, Lock, Cloud } from 'lucide-react';
 import { useLocations } from '../context/LocationsContext';
 import { useTheme } from '../theme/ThemeContext';

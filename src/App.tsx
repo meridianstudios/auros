@@ -1,11 +1,10 @@
-import { useState } from 'react';
-import { House, Radar as RadarIcon, TriangleAlert, RadioTower, Settings as SettingsIcon, Zap, MoreHorizontal } from 'lucide-react';
+import { useState, useEffect, lazy, Suspense } from 'react';
+import { House, Radar as RadarIcon, TriangleAlert, RadioTower, Settings as SettingsIcon, Zap, MoreHorizontal, WifiOff } from 'lucide-react';
 import { ThemeProvider } from './theme/ThemeContext';
 import { LocationsProvider } from './context/LocationsContext';
 import { PrefsProvider } from './lib/prefs';
 import type { View } from './nav';
 import { Home } from './screens/Home';
-import { Radar } from './screens/Radar';
 import { Alerts } from './screens/Alerts';
 import { Nwr } from './screens/Nwr';
 import { Locations } from './screens/Locations';
@@ -14,6 +13,9 @@ import { Forecast } from './screens/Forecast';
 import { Drawer } from './components/Drawer';
 import { SignIn } from './screens/SignIn';
 import { AuthProvider } from './context/AuthContext';
+
+// Radar pulls in Leaflet — code-split it so it loads only when the tab opens.
+const Radar = lazy(() => import('./screens/Radar').then((m) => ({ default: m.Radar })));
 
 const TABS: { key: View; label: string; Icon: typeof House }[] = [
   { key: 'home', label: 'Home', Icon: House },
@@ -27,6 +29,17 @@ function Shell() {
   const [view, setView] = useState<View>('home');
   const [menuOpen, setMenuOpen] = useState(false);
   const openMenu = () => setMenuOpen(true);
+  const [online, setOnline] = useState(true);
+  useEffect(() => {
+    const sync = () => setOnline(navigator.onLine);
+    sync();
+    window.addEventListener('online', sync);
+    window.addEventListener('offline', sync);
+    return () => {
+      window.removeEventListener('online', sync);
+      window.removeEventListener('offline', sync);
+    };
+  }, []);
 
   const screen =
     view === 'home' ? <Home onNavigate={setView} />
@@ -41,8 +54,11 @@ function Shell() {
 
   return (
     <div className="app">
+      {!online && <div className="offline-banner"><WifiOff size={13} /> You're offline — showing the latest saved data</div>}
       <button className="menu-fab" aria-label="Menu" onClick={openMenu}><MoreHorizontal size={20} /></button>
-      <main className="main">{screen}</main>
+      <main className="main">
+        <Suspense fallback={<div className="center"><div className="spin" /></div>}>{screen}</Suspense>
+      </main>
       <nav className="tabbar">
         <div className="nav-brand"><Zap size={19} /> Auros</div>
         {TABS.map(({ key, label, Icon }) => {

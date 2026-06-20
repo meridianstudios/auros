@@ -17,6 +17,7 @@ export interface UseWeather {
   alerts: NwsAlert[];
   loading: boolean;
   error: string | null;
+  updatedAt: number | null;
   refresh: () => Promise<void>;
 }
 
@@ -33,6 +34,7 @@ export function useWeather(lat: number, lon: number): UseWeather {
   const [alerts, setAlerts] = useState<NwsAlert[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -73,6 +75,7 @@ export function useWeather(lat: number, lon: number): UseWeather {
     if (!p && al.status === 'rejected') {
       setError('Could not reach weather services. Check your connection.');
     }
+    setUpdatedAt(Date.now());
     setLoading(false);
   }, [lat, lon]);
 
@@ -84,5 +87,5 @@ export function useWeather(lat: number, lon: number): UseWeather {
     return () => clearInterval(t);
   }, [refresh]);
 
-  return { point, current, hourly, daily, timeline, risk, riskTomorrow, riskDay3, riskError, alerts, loading, error, refresh };
+  return { point, current, hourly, daily, timeline, risk, riskTomorrow, riskDay3, riskError, alerts, loading, error, updatedAt, refresh };
 }

@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { MapPin, ChevronDown, ChevronRight, ShieldCheck, CloudLightning, Zap } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { MapPin, ChevronDown, ChevronRight, ShieldCheck, CloudLightning, Zap, RotateCw } from 'lucide-react';
 import { useLocations } from '../context/LocationsContext';
 import { useWeather } from '../hooks/useWeather';
 import { useConditions } from '../hooks/useConditions';
@@ -36,6 +36,14 @@ function fmtClock(iso: string): string {
   return `${h}:${mm} ${ap}`;
 }
 
+// "Updated 2m ago" relative label.
+function ago(ts: number): string {
+  const s = Math.max(0, Math.round((Date.now() - ts) / 1000));
+  if (s < 45) return 'Updated just now';
+  if (s < 3600) return `Updated ${Math.round(s / 60)}m ago`;
+  return `Updated ${Math.round(s / 3600)}h ago`;
+}
+
 function Tile({ k, v, sub, color }: { k: string; v: string; sub?: string; color?: string }) {
   return (
     <div className="ctile">
@@ -68,6 +76,12 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
   const trop = useTropical();
   const notified = useRef<Set<string>>(new Set());
   const u = prefs.units;
+  // Tick so the "updated X ago" label stays current while the app is open.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setTick((x) => x + 1), 30000);
+    return () => clearInterval(t);
+  }, []);
 
   // Alert notifications, gated by per-event prefs + quiet hours.
   useEffect(() => {
@@ -110,13 +124,20 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
       </div>
       <div className="hero">
         <HeroSky condition={w.current?.shortForecast} day={isDay} />
-        <button className="place" onClick={() => onNavigate('locations')}>
-          <MapPin size={14} /> {place} <ChevronDown size={13} style={{ opacity: 0.5 }} />
-        </button>
+        <div className="hero-top">
+          <button className="place" onClick={() => onNavigate('locations')}>
+            <MapPin size={14} /> {place} <ChevronDown size={13} style={{ opacity: 0.5 }} />
+          </button>
+          {w.updatedAt && (
+            <button className="refresh-btn" onClick={() => w.refresh()} aria-label="Refresh">
+              {ago(w.updatedAt)} <RotateCw size={12} />
+            </button>
+          )}
+        </div>
         <div className="hero-row">
           <div>
-            <div className="temp">{w.current ? `${convertTemp(w.current.temperature, u)}°` : '—'}</div>
-            <div className="cond">{w.current?.shortForecast ?? (w.loading ? 'Updating…' : 'Unavailable')}</div>
+            <div className="temp">{w.current ? `${convertTemp(w.current.temperature, u)}°` : w.error ? '—' : <span className="skel skel-temp" />}</div>
+            <div className="cond">{w.current?.shortForecast ?? (w.error ? 'Unavailable' : <span className="skel skel-cond" />)}</div>
           </div>
           {w.current && <span className="hero-ic"><CondIcon p={w.current} size={46} color="var(--primary)" /></span>}
         </div>
@@ -169,7 +190,7 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
         )}
 
         {/* Hourly forecast — icons + per-hour temps + temperature curve */}
-        {w.hourly.length > 0 && (
+        {w.hourly.length > 0 ? (
           <>
             <div className="label">
               <span>Hourly Forecast</span>
@@ -179,7 +200,12 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
             </div>
             <HourlyGraph hourly={w.hourly} units={u} />
           </>
-        )}
+        ) : w.loading && !w.error ? (
+          <>
+            <div className="label"><span>Hourly Forecast</span></div>
+            <div className="card skel" style={{ height: 130 }} />
+          </>
+        ) : null}
 
         {c && (
           <>
