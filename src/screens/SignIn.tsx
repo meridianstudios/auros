@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { isNative } from '../lib/platform';
 import type { View } from '../nav';
 
 function prettyErr(e: unknown): string {
@@ -52,10 +53,14 @@ export function SignIn({ onNavigate }: { onNavigate: (v: View) => void }) {
           <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={submit} disabled={busy}>
             {busy ? '…' : mode === 'up' ? 'Create account' : 'Sign in'}
           </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0', color: 'var(--text-dim)', fontSize: 12 }}>
-            <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />or<div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-          </div>
-          <button className="btn btn-ghost" onClick={google} disabled={busy}>Continue with Google</button>
+          {!isNative && (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0', color: 'var(--text-dim)', fontSize: 12 }}>
+                <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />or<div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+              </div>
+              <button className="btn btn-ghost" onClick={google} disabled={busy}>Continue with Google</button>
+            </>
+          )}
         </div>
         <div className="muted" style={{ textAlign: 'center', marginTop: 14, fontSize: 14 }}>
           {mode === 'up' ? 'Already have an account? ' : "Don't have an account? "}
