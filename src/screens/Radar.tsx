@@ -3,7 +3,7 @@ import L from 'leaflet';
 import { Play, Pause, Lock } from 'lucide-react';
 import { useLocations } from '../context/LocationsContext';
 import { useTheme } from '../theme/ThemeContext';
-import { getAlertGeometries } from '../api/nws';
+import { getAlertGeometries, getActiveWarnings } from '../api/nws';
 import { severityColor } from '../theme/colors';
 import { useTropical } from '../hooks/useTropical';
 import { category, catColor } from '../api/tropical';
@@ -85,6 +85,19 @@ export function Radar() {
         alerts.forEach((a) => {
           const c = severityColor(a.severity, a.event);
           L.geoJSON(a.geometry as never, { style: { color: c, weight: 2, fillColor: c, fillOpacity: 0.12 } })
+            .bindPopup(`<b>${a.event}</b>`)
+            .addTo(map);
+        });
+      })
+      .catch(() => {});
+
+    // Nationwide warning/watch polygons — zoom out to see warnings anywhere.
+    getActiveWarnings()
+      .then((warnings) => {
+        if (cancelled) return;
+        warnings.forEach((a) => {
+          const c = severityColor(a.severity, a.event);
+          L.geoJSON(a.geometry as never, { style: { color: c, weight: 1.4, fillColor: c, fillOpacity: 0.08 } })
             .bindPopup(`<b>${a.event}</b>`)
             .addTo(map);
         });
