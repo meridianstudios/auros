@@ -92,6 +92,7 @@ jobs:
           VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.VITE_GOOGLE_CLIENT_SECRET }}
         with:
           releaseId: ${{ needs.create-release.outputs.release_id }} # upload to the shared draft, don't create one
+          releaseDraft: true # keep it a draft for review; tauri-action publishes otherwise
           args: ${{ matrix.args }}
 
   # 3) Android APK via Capacitor, uploaded to the same draft release.
