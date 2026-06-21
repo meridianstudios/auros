@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Moon, Sun, Bell, ExternalLink, Siren } from 'lucide-react';
+import { Moon, Sun, Bell, ExternalLink, Siren, Download } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
 import { usePrefs, type NotifyPrefs } from '../lib/prefs';
 import { notify } from '../lib/notify';
@@ -115,6 +115,16 @@ export function Settings() {
             Data from the National Weather Service, SPC, and RainViewer — all free and public domain. Complements,
             does not replace, a NOAA weather radio and Wireless Emergency Alerts.
           </div>
+          {!isNative && (
+            <a
+              href="https://meridian.novalabsos.com/auros.html"
+              target="_blank"
+              rel="noreferrer"
+              style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 14, fontWeight: 700, fontSize: 14 }}
+            >
+              <Download size={15} /> Get the app for desktop &amp; mobile
+            </a>
+          )}
           <a href="https://www.weather.gov/" target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 14, fontWeight: 600, fontSize: 14 }}>
             weather.gov <ExternalLink size={14} />
           </a>
