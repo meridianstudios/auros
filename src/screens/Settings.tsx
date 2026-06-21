@@ -96,7 +96,7 @@ export function Settings() {
           {msg && <div className="muted" style={{ fontSize: 13, marginTop: 10 }}>{msg}</div>}
           <button
             className="btn btn-ghost"
-            style={{ marginTop: 10 }}
+            style={{ marginTop: 10, width: '100%' }}
             onClick={() => window.dispatchEvent(new CustomEvent('auros:test-alarm'))}
           >
             <Siren size={16} /> Test the alert alarm (box + sound)

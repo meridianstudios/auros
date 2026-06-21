@@ -13,9 +13,27 @@ export interface L3ProductDef {
   kind: L3Kind;
   units: string;
   legend: string; // short caption shown under the radar
+  /** value range sampled for the legend gradient + axis labels (left→right) */
+  scale?: { range: [number, number]; labels: string[] };
+  /** categorical legend (e.g. hydrometeor) instead of a gradient */
+  categories?: { color: string; label: string }[];
   /** convert a stored value to the number shown to the user (e.g. m/s -> kt) */
   display?: (v: number) => number;
   color: (v: number) => string | null;
+}
+
+// Build a left→right CSS gradient by sampling a product's color function across
+// its scale range (used by the legend bar).
+export function legendGradient(def: L3ProductDef, steps = 28): string {
+  if (!def.scale) return 'transparent';
+  const [lo, hi] = def.scale.range;
+  const stops: string[] = [];
+  for (let i = 0; i <= steps; i += 1) {
+    const v = lo + ((hi - lo) * i) / steps;
+    const c = def.color(v) || 'transparent';
+    stops.push(`${c} ${((100 * i) / steps).toFixed(1)}%`);
+  }
+  return `linear-gradient(to right, ${stops.join(', ')})`;
 }
 
 // ---- Reflectivity (single-site super-res, N0B) — classic NWS dBZ palette ----
@@ -114,31 +132,47 @@ function kdpColor(v: number): string | null {
 export const L3_PRODUCTS: Record<string, L3ProductDef> = {
   velocity: {
     key: 'velocity', label: 'Velocity', short: 'V', prod: 'N0G', kind: 'value',
-    units: 'kt', legend: 'Green = toward radar · red = away · grey = zero line — a tight green/red pair is rotation',
+    units: 'kt', legend: 'A tight green/red pair is rotation',
+    scale: { range: [-64, 64], labels: ['← toward', '0', 'away →'] },
     display: (v) => v * 1.94384, color: velColor,
   },
   srv: {
     key: 'srv', label: 'Storm-Rel Velocity', short: 'SRV', prod: 'N0S', kind: 'level',
-    units: '', legend: 'Storm-relative motion · purple = range folding', color: srvColor,
+    units: '', legend: 'Motion relative to the storm · purple = range folding',
+    scale: { range: [1, 14], labels: ['← inbound', '0', 'outbound →'] }, color: srvColor,
   },
   hydro: {
     key: 'hydro', label: 'Hydrometeor', short: 'HC', prod: 'N0H', kind: 'value',
-    units: '', legend: 'Precip type — blue snow · green rain · red/pink hail', color: hydroColor,
+    units: '', legend: 'Precipitation type, classified by the radar',
+    categories: [
+      { color: '#8fd8ff', label: 'Snow' },
+      { color: '#5aa0ff', label: 'Wet snow' },
+      { color: '#19b000', label: 'Rain' },
+      { color: '#fdf802', label: 'Heavy rain' },
+      { color: '#fd9500', label: 'Graupel' },
+      { color: '#fd0000', label: 'Hail' },
+      { color: '#7a7a7a', label: 'Clutter' },
+    ],
+    color: hydroColor,
   },
   reflSite: {
     key: 'reflSite', label: 'Reflectivity (site)', short: 'BR', prod: 'N0B', kind: 'value',
-    units: 'dBZ', legend: 'Single-site super-res · light → heavy (dBZ)', color: reflColor,
+    units: 'dBZ', legend: 'Single-site super-res reflectivity',
+    scale: { range: [5, 75], labels: ['5', '40', '75 dBZ'] }, color: reflColor,
   },
   cc: {
     key: 'cc', label: 'Corr. Coeff', short: 'CC', prod: 'N0C', kind: 'value',
-    units: '', legend: 'Correlation — blue/green = uniform precip · red = debris / non-weather', color: ccColor,
+    units: '', legend: 'Low CC inside a storm = debris / non-weather',
+    scale: { range: [0.2, 1.05], labels: ['0.2', '0.6', '1.0'] }, color: ccColor,
   },
   zdr: {
     key: 'zdr', label: 'Diff. Refl', short: 'ZDR', prod: 'N0X', kind: 'value',
-    units: 'dB', legend: 'Differential reflectivity — green→red = bigger drops · purple = negative', color: zdrColor,
+    units: 'dB', legend: 'Bigger / flatter drops read higher',
+    scale: { range: [-4, 6], labels: ['−4', '0', '+6 dB'] }, color: zdrColor,
   },
   kdp: {
     key: 'kdp', label: 'KDP', short: 'KDP', prod: 'N0K', kind: 'value',
-    units: '°/km', legend: 'Specific differential phase — yellow/red = heavy rain', color: kdpColor,
+    units: '°/km', legend: 'Scales with rainfall rate',
+    scale: { range: [0, 4], labels: ['0', '2', '4 °/km'] }, color: kdpColor,
   },
 };

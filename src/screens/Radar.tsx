@@ -13,6 +13,7 @@ import { fetchRecentL3 } from '../api/nexrad';
 import { decodeL3, type L3Data } from '../lib/nexradL3/decode';
 import { L3_PRODUCTS } from '../lib/nexradL3/l3products';
 import { createRadialLayer } from '../lib/nexradL3/RadialLayer';
+import { L3Legend } from '../components/L3Legend';
 
 const TRANSPARENT =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/QBYAAAAAElFTkSuQmCC';
@@ -409,9 +410,7 @@ export function Radar() {
             <Loader size={13} className="spin" /> Decoding {l3def.label.toLowerCase()}…
           </div>
         )}
-        {l3def && l3.status === 'ok' && (
-          <div className="radar-legend">{l3def.legend} · tap a dot to switch radar</div>
-        )}
+        {l3def && l3.status === 'ok' && <L3Legend def={l3def} />}
         {l3def && l3.status === 'error' && (
           <div className="radar-msg">
             <div className="radar-msg-card">

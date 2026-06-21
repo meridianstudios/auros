@@ -498,3 +498,19 @@ input[type="range"].slider::-moz-range-thumb { width: 16px; height: 16px; border
 @keyframes alarm-pop { from { opacity: 0; transform: scale(0.94) } to { opacity: 1; transform: scale(1) } }
 @keyframes alarm-pulse { 0%, 100% { filter: brightness(1) } 50% { filter: brightness(1.18) } }
 @media (prefers-reduced-motion: reduce) { .alarm-head, .alarm-card { animation: none; } }
+
+/* ===== L3 color-scale legend ===== */
+.l3-legend {
+  position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+  z-index: 600; max-width: 92%; min-width: 230px;
+  background: rgba(11, 16, 32, 0.84); border: 0.5px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px; padding: 8px 12px;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); pointer-events: none;
+  display: flex; flex-direction: column; gap: 5px; align-items: center;
+}
+.l3-legend-bar { width: 100%; height: 9px; border-radius: 5px; border: 0.5px solid rgba(255, 255, 255, 0.18); }
+.l3-legend-axis { width: 100%; display: flex; justify-content: space-between; font-size: 11px; color: #cdd6e6; }
+.l3-legend-cap { font-size: 11px; color: #9aa4b5; text-align: center; line-height: 1.35; }
+.l3-legend-cats { display: flex; flex-wrap: wrap; gap: 4px 10px; justify-content: center; }
+.l3-cat { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: #cdd6e6; }
+.l3-cat i { width: 11px; height: 11px; border-radius: 3px; display: inline-block; flex: none; }
