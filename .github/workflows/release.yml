@@ -69,7 +69,8 @@ jobs:
   # is wrapped with Capacitor + signed with the committed debug keystore (a
   # consistent signature so in-place updates install) — no keystore secret.
   android:
-    needs: desktop # attach to the draft release the desktop job creates
+    needs: desktop # run after desktop so it attaches to the same draft release
+    if: ${{ !cancelled() }} # still build even if a desktop leg flakes
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -80,7 +81,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
       - uses: android-actions/setup-android@v3
       - run: npm ci
       - name: Build web app
