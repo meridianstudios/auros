@@ -34,9 +34,9 @@ export function AlertAlarm() {
 
   const triggerAlarm = useCallback((a: NwsAlert) => {
     stopTone.current?.();
-    stopTone.current = playEasAttention(rank(a.event) >= 4 ? 10 : 7);
+    stopTone.current = prefs.notify.alarmSound ? playEasAttention(rank(a.event) >= 4 ? 10 : 7) : null;
     setActive(a);
-  }, []);
+  }, [prefs.notify.alarmSound]);
 
   // Settings "Test the alarm" button fires this so the box + tone can be
   // previewed without waiting for a real alert.

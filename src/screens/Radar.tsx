@@ -46,6 +46,25 @@ const ALERT_REFRESH_MS = 120_000; // re-fetch alert overlays every 2 min
 const L3_REFRESH_MS = 150_000; // re-fetch the latest L3 scans every ~2.5 min
 const L3_FRAMES = 8; // scans to load for the animation loop
 
+// Remember the last-used radar product + tilt across sessions.
+const PROD_KEY = 'auros.radar.product';
+const TILT_KEY = 'auros.radar.tilt';
+const VALID_PRODUCTS = new Set(PRODUCTS.map((p) => p.key));
+function loadProduct(): Product {
+  try {
+    const v = localStorage.getItem(PROD_KEY);
+    if (v && VALID_PRODUCTS.has(v as Product)) return v as Product;
+  } catch { /* ignore */ }
+  return 'ref';
+}
+function loadTilt(): number {
+  try {
+    const v = Number(localStorage.getItem(TILT_KEY));
+    if (v >= 0 && v <= 3) return v;
+  } catch { /* ignore */ }
+  return 0;
+}
+
 type L3State = { status: 'idle' | 'loading' | 'ok' | 'error'; site?: string; time?: Date; msg?: string };
 
 const escHtml = (s?: string): string =>
@@ -83,7 +102,7 @@ export function Radar() {
   const l3LayerRef = useRef<L.Layer | null>(null);
   const fittedRef = useRef<string | null>(null); // product:site we've already framed
 
-  const [product, setProduct] = useState<Product>('ref');
+  const [product, setProduct] = useState<Product>(loadProduct);
   const [idx, setIdx] = useState(FRAMES.length - 1);
   const [playing, setPlaying] = useState(false); // open paused on the most-recent frame
   const [satellite, setSatellite] = useState(false);
@@ -91,7 +110,7 @@ export function Radar() {
   // Which radar site feeds the L3 products. Defaults to nearest; the user can
   // click another station's dot on the map to switch.
   const [l3Site, setL3Site] = useState<NexradSite | null>(null);
-  const [tilt, setTilt] = useState(0); // elevation tilt index 0-3 (0.5° → 1.8°)
+  const [tilt, setTilt] = useState(loadTilt); // elevation tilt index 0-3 (0.5° → 1.8°)
   const [l3Frames, setL3Frames] = useState<{ data: L3Data; time: Date }[]>([]);
   const [l3Idx, setL3Idx] = useState(0); // current frame in the L3 loop
 
@@ -99,6 +118,10 @@ export function Radar() {
   useEffect(() => {
     setL3Site(nearestSite(selected.lat, selected.lon));
   }, [selected.lat, selected.lon]);
+
+  // Remember the last product + tilt across sessions.
+  useEffect(() => { try { localStorage.setItem(PROD_KEY, product); } catch { /* ignore */ } }, [product]);
+  useEffect(() => { try { localStorage.setItem(TILT_KEY, String(tilt)); } catch { /* ignore */ } }, [tilt]);
 
   useEffect(() => {
     const el = containerRef.current;

@@ -1,6 +1,9 @@
+import { readFileSync } from 'node:fs';
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+
+const appVersion = JSON.parse(readFileSync('./package.json', 'utf8')).version as string;
 
 // Tauri sets TAURI_ENV_* env vars when it runs this build — use that to bake a
 // reliable "native app" flag into the bundle (runtime webview detection was
@@ -48,7 +51,7 @@ function nexradL3BrowserFix(): Plugin {
 
 // https://vite.dev/config/
 export default defineConfig({
-  define: { __IS_NATIVE__: JSON.stringify(isTauriBuild) },
+  define: { __IS_NATIVE__: JSON.stringify(isTauriBuild), __APP_VERSION__: JSON.stringify(appVersion) },
   plugins: [
     nexradL3BrowserFix(),
     react(),

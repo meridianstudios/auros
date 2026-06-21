@@ -98,7 +98,8 @@ export function PasswordResetModal({
               <MailCheck size={18} style={{ color: 'var(--primary)', flexShrink: 0, marginTop: 2 }} />
               <p className="muted" style={{ fontSize: 13, margin: 0, lineHeight: 1.5 }}>
                 Check your inbox <strong>and spam</strong> for an email from Auros. Open it, copy the
-                reset link, paste it below, then pick a new password.
+                reset link, paste it below, then pick a new password — or just tap the link in the
+                email to reset in your browser.
               </p>
             </div>
             <textarea

@@ -10,13 +10,14 @@ export interface NotifyPrefs {
   watches: boolean;
   advisories: boolean;
   stormHeadsUp: boolean; // the storm-approach timeline heads-up
+  alarmSound: boolean; // play the EAS tone with the on-screen alert box
 }
 export interface QuietHours { enabled: boolean; start: number; end: number } // hours 0-23
 export interface Prefs { units: Units; notify: NotifyPrefs; quiet: QuietHours }
 
 const DEFAULT: Prefs = {
   units: 'F',
-  notify: { tornado: true, severe: true, watches: true, advisories: false, stormHeadsUp: true },
+  notify: { tornado: true, severe: true, watches: true, advisories: false, stormHeadsUp: true, alarmSound: true },
   quiet: { enabled: false, start: 22, end: 7 },
 };
 

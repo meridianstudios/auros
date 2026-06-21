@@ -21,6 +21,7 @@ const NOTIFY_ROWS: { key: keyof NotifyPrefs; label: string; sub: string }[] = [
   { key: 'watches', label: 'Watches', sub: 'Tornado & severe thunderstorm watches' },
   { key: 'advisories', label: 'Advisories & statements', sub: 'Wind, flood, etc.' },
   { key: 'stormHeadsUp', label: 'Storm heads-up', sub: 'Timeline notice when storms approach' },
+  { key: 'alarmSound', label: 'Alarm sound', sub: 'Play the EAS tone with the on-screen alert box' },
 ];
 
 export function Settings() {
@@ -109,7 +110,7 @@ export function Settings() {
         <div className="label">About</div>
         <div className="card">
           <div style={{ fontWeight: 600, fontSize: 17 }}>Auros</div>
-          <div className="dim" style={{ fontSize: 13, marginTop: 2 }}>v0.2.0 · Phase 2 · by Meridian</div>
+          <div className="dim" style={{ fontSize: 13, marginTop: 2 }}>v{__APP_VERSION__} · by Meridian</div>
           <div className="muted" style={{ fontSize: 13.5, lineHeight: 1.55, marginTop: 12 }}>
             Data from the National Weather Service, SPC, and RainViewer — all free and public domain. Complements,
             does not replace, a NOAA weather radio and Wireless Emergency Alerts.
