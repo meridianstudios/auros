@@ -44,7 +44,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-      - run: npm ci
+      - run: npm install --no-audit --no-fund # not `npm ci`: dodges npm's optional-dep bug (#4828) that drops platform-native binaries like @tauri-apps/cli-darwin-arm64
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -83,7 +83,7 @@ jobs:
           distribution: temurin
           java-version: 21
       - uses: android-actions/setup-android@v3
-      - run: npm ci
+      - run: npm install --no-audit --no-fund # not `npm ci`: dodges npm's optional-dep bug (#4828) that drops platform-native binaries like @tauri-apps/cli-darwin-arm64
       - name: Build web app
         env:
           VITE_FB_API_KEY: ${{ secrets.VITE_FB_API_KEY }}
