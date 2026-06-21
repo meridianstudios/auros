@@ -1,0 +1,11 @@
+{
+  "appId": "com.meridianstudios.auros",
+  "appName": "Auros",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}
