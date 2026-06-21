@@ -1,8 +1,11 @@
 name: release
 
-# Push a version tag (e.g. `git tag v1.0.0 && git push origin v1.0.0`) to build
-# the desktop installers and attach them to a draft GitHub Release. Mirrors the
-# proven Nova OS tauri-release workflow.
+# Push a version tag (git tag vX.Y.Z && git push origin vX.Y.Z) to build the
+# desktop installers + Android APK and attach them to ONE draft GitHub Release
+# for review. A create-release job makes the draft first; every build job then
+# uploads to it by ID. This avoids the matrix race that otherwise creates
+# duplicate drafts — GitHub's "get release by tag" ignores drafts, so without a
+# shared release each tauri-action leg would create its own.
 on:
   push:
     tags:
@@ -10,11 +13,41 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write # attach installers to the release
+  contents: write
 
 jobs:
-  # macOS (per-arch .dmg), Linux (AppImage/deb), Windows (NSIS/MSI)
+  # 1) Create (or reuse, on a re-run) the single draft release up front.
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.mk.outputs.result }}
+    steps:
+      - uses: actions/github-script@v7
+        id: mk
+        env:
+          TAG: ${{ github.ref_name }}
+        with:
+          result-encoding: string
+          script: |
+            const tag = process.env.TAG;
+            const { owner, repo } = context.repo;
+            const all = await github.rest.repos.listReleases({ owner, repo, per_page: 100 });
+            let rel = all.data.find((r) => r.tag_name === tag);
+            if (!rel) {
+              rel = (await github.rest.repos.createRelease({
+                owner, repo,
+                tag_name: tag,
+                name: `Auros ${tag}`,
+                body: 'Auros — severe-weather awareness by Meridian.',
+                draft: true,
+                prerelease: false,
+              })).data;
+            }
+            return String(rel.id);
+
+  # 2) Desktop: macOS (per-arch .dmg), Linux (AppImage/deb/rpm), Windows (NSIS/MSI)
   desktop:
+    needs: create-release
     strategy:
       fail-fast: false
       matrix:
@@ -58,18 +91,12 @@ jobs:
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.VITE_GOOGLE_CLIENT_SECRET }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Auros ${{ github.ref_name }}'
-          releaseBody: 'Auros — severe-weather awareness by Meridian.'
-          releaseDraft: true
-          prerelease: false
+          releaseId: ${{ needs.create-release.outputs.release_id }} # upload to the shared draft, don't create one
           args: ${{ matrix.args }}
 
-  # Android APK via Capacitor (mirrors the Nova OS android build). The web build
-  # is wrapped with Capacitor + signed with the committed debug keystore (a
-  # consistent signature so in-place updates install) — no keystore secret.
+  # 3) Android APK via Capacitor, uploaded to the same draft release.
   android:
-    needs: desktop # run after desktop so it attaches to the same draft release
+    needs: [create-release, desktop] # build after desktop, attach to the shared draft
     if: ${{ !cancelled() }} # still build even if a desktop leg flakes
     runs-on: ubuntu-latest
     steps:
@@ -83,7 +110,7 @@ jobs:
           distribution: temurin
           java-version: 21
       - uses: android-actions/setup-android@v3
-      - run: npm install --no-audit --no-fund # not `npm ci`: dodges npm's optional-dep bug (#4828) that drops platform-native binaries like @tauri-apps/cli-darwin-arm64
+      - run: npm install --no-audit --no-fund # not `npm ci`: dodges npm's optional-dep bug (#4828)
       - name: Build web app
         env:
           VITE_FB_API_KEY: ${{ secrets.VITE_FB_API_KEY }}
@@ -117,8 +144,6 @@ jobs:
       - name: Rename APK
         run: cp android/app/build/outputs/apk/debug/app-debug.apk auros.apk
       - name: Attach APK to the release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          draft: true # keep it a draft (match the desktop job) so you review before publishing
-          files: auros.apk
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.ref_name }}" auros.apk --clobber
