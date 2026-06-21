@@ -22,6 +22,7 @@ const RadialLayerClass = (L.Layer as any).extend({
     canvas.style.position = 'absolute';
     canvas.style.pointerEvents = 'none';
     canvas.style.opacity = String(this._opacity);
+    canvas.style.filter = 'blur(0.5px)'; // soften the gate/radial steps
     this._canvas = canvas;
     map.getPanes().overlayPane.appendChild(canvas);
     map.on('moveend zoomend resize', this._reset, this);
@@ -86,7 +87,9 @@ const RadialLayerClass = (L.Layer as any).extend({
         colors[i] = v == null ? null : product.color(v as number);
       }
       const a0 = (radial.startAngle * Math.PI) / 180;
-      const a1 = ((radial.startAngle + (radial.angleDelta || 1)) * Math.PI) / 180;
+      // Extend the trailing edge a touch past the next radial so adjacent wedges
+      // overlap — removes the thin "spoke" seams between radials.
+      const a1 = ((radial.startAngle + (radial.angleDelta || 1) + 0.6) * Math.PI) / 180;
       const sin0 = Math.sin(a0); const cos0 = Math.cos(a0);
       const sin1 = Math.sin(a1); const cos1 = Math.cos(a1);
 

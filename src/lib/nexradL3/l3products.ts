@@ -94,39 +94,55 @@ function hydroColor(v: number): string | null {
   return '#f800fd'; // unknown / large hail
 }
 
+// Smoothly interpolate a value through ascending [value, [r,g,b]] stops — gives
+// the dual-pol products continuous ramps (RadarScope-style) instead of chunky
+// bands.
+type RGB = [number, number, number];
+function lerpRgb(a: RGB, b: RGB, t: number): string {
+  return `rgb(${Math.round(a[0] + (b[0] - a[0]) * t)},${Math.round(a[1] + (b[1] - a[1]) * t)},${Math.round(a[2] + (b[2] - a[2]) * t)})`;
+}
+function ramp(v: number, stops: [number, RGB][]): string {
+  if (v <= stops[0][0]) { const c = stops[0][1]; return `rgb(${c[0]},${c[1]},${c[2]})`; }
+  for (let i = 1; i < stops.length; i += 1) {
+    if (v <= stops[i][0]) {
+      const lo = stops[i - 1]; const hi = stops[i];
+      return lerpRgb(lo[1], hi[1], (v - lo[0]) / (hi[0] - lo[0]));
+    }
+  }
+  const c = stops[stops.length - 1][1];
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+
 // ---- Correlation coefficient (N0C) — high (~1) = uniform precip, low = mixed
 // or non-meteorological (a low-CC "debris ball" inside a storm = tornado debris). ----
+const CC_STOPS: [number, RGB][] = [
+  [0.2, [86, 28, 96]], [0.45, [150, 40, 80]], [0.65, [216, 56, 56]],
+  [0.80, [224, 138, 46]], [0.90, [224, 214, 46]], [0.95, [63, 181, 63]],
+  [0.97, [60, 168, 198]], [1.0, [59, 111, 212]], [1.05, [150, 180, 255]],
+];
 function ccColor(v: number): string | null {
-  if (v < 0.2) return null;
-  if (v >= 0.97) return '#3b6fd4'; // blue — uniform rain/snow
-  if (v >= 0.90) return '#3fa9c6'; // teal
-  if (v >= 0.80) return '#3fb53f'; // green
-  if (v >= 0.70) return '#d6d630'; // yellow
-  if (v >= 0.55) return '#e08a2e'; // orange
-  return '#d83838'; // red — debris / non-weather
+  return v < 0.2 ? null : ramp(v, CC_STOPS);
 }
 
 // ---- Differential reflectivity (N0X / ZDR, dB) — ~0 spherical (hail/drizzle),
 // positive = oblate (rain, big drops), negative = ice/odd. ----
-function zdrColor(v: number): string | null {
-  if (v <= -2) return '#5a4fd0'; // purple — strongly negative
-  if (v < 0.3) return '#7a8a9a'; // grey — near zero (spherical)
-  if (v < 1) return '#3fb53f'; // green
-  if (v < 2) return '#9fd630'; // light green
-  if (v < 3) return '#e0d62e'; // yellow
-  if (v < 4.5) return '#e08a2e'; // orange — big drops
-  return '#d83838'; // red — very large drops / melting hail
+const ZDR_STOPS: [number, RGB][] = [
+  [-4, [92, 79, 208]], [-1, [98, 112, 168]], [0.2, [122, 138, 154]],
+  [1, [63, 181, 63]], [2, [159, 214, 48]], [3, [224, 214, 46]],
+  [4.5, [224, 138, 46]], [6, [216, 56, 56]],
+];
+function zdrColor(v: number): string {
+  return ramp(v, ZDR_STOPS);
 }
 
 // ---- Specific differential phase (N0K / KDP, deg/km) — scales with liquid
 // water; high = heavy rain. ----
+const KDP_STOPS: [number, RGB][] = [
+  [0.2, [59, 111, 212]], [0.6, [63, 181, 63]], [1.2, [224, 214, 46]],
+  [2.2, [224, 138, 46]], [3.5, [216, 56, 56]], [5, [150, 28, 28]],
+];
 function kdpColor(v: number): string | null {
-  if (v < 0.2) return null; // little/no liquid
-  if (v < 0.5) return '#3b6fd4'; // blue
-  if (v < 1) return '#3fb53f'; // green
-  if (v < 2) return '#e0d62e'; // yellow
-  if (v < 3.5) return '#e08a2e'; // orange
-  return '#d83838'; // red — heavy rain
+  return v < 0.2 ? null : ramp(v, KDP_STOPS);
 }
 
 export const L3_PRODUCTS: Record<string, L3ProductDef> = {
