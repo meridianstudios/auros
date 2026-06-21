@@ -132,6 +132,9 @@ export function Radar() {
       [selected.lat, selected.lon],
       9
     );
+    // Move the +/- control out of the top-left, where it collided with the title
+    // pill — bottom-left keeps it clear of the pill, switcher, tilts, and legend.
+    map.zoomControl.setPosition('bottomleft');
     mapRef.current = map;
 
     const baseUrl =

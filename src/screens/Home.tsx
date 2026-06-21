@@ -13,6 +13,7 @@ import { AlertCard } from '../components/AlertCard';
 import { CondIcon } from '../components/CondIcon';
 import { HourlyGraph } from '../components/HourlyGraph';
 import { HeroSky } from '../components/HeroSky';
+import { useLandmark } from '../api/landmark';
 import { SevereBanner } from '../components/SevereBanner';
 import type { RiskMeta } from '../theme/colors';
 import { notify } from '../lib/notify';
@@ -109,6 +110,7 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
     selected.name === 'My Location' && w.point?.city
       ? `${w.point.city}, ${w.point.state}`
       : shortPlace(selected.name);
+  const heroImg = useLandmark(place); // city photo backdrop, null for addresses/townships
   const tl = w.timeline;
   const day3Label = new Date(Date.now() + 2 * 86400000).toLocaleDateString([], { weekday: 'long' });
   const isDay = c ? c.isDay : true;
@@ -122,8 +124,10 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
       <div className="app-header">
         <div className="brand"><Zap size={16} /> Auros</div>
       </div>
-      <div className="hero">
-        <HeroSky condition={w.current?.shortForecast} day={isDay} />
+      <div className={`hero${heroImg ? ' has-photo' : ''}`}>
+        {heroImg
+          ? <div className="hero-photo" style={{ backgroundImage: `url("${heroImg}")` }} />
+          : <HeroSky condition={w.current?.shortForecast} day={isDay} />}
         <div className="hero-top">
           <button className="place" onClick={() => onNavigate('locations')}>
             <MapPin size={14} /> {place} <ChevronDown size={13} style={{ opacity: 0.5 }} />
