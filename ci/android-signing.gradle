@@ -3,6 +3,12 @@
 // variables set from GitHub secrets, so no secret lives in this file. Local debug
 // builds never apply this and keep using the committed debug keystore.
 android {
+    defaultConfig {
+        versionName "1.0.1"
+        // versionCode comes from the CI run number so every build is unique + increasing
+        def vc = System.getenv("ANDROID_VERSION_CODE")
+        if (vc) { versionCode vc.toInteger() }
+    }
     signingConfigs {
         release {
             storeFile file(System.getenv("ANDROID_KEYSTORE_PATH"))
