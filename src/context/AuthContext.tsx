@@ -9,9 +9,11 @@ import {
   confirmPasswordReset,
   signOut,
   updateProfile,
+  deleteUser,
   type User,
 } from 'firebase/auth';
-import { auth, googleProvider, firebaseReady } from '../lib/firebase';
+import { doc, deleteDoc } from 'firebase/firestore';
+import { auth, googleProvider, db, firebaseReady } from '../lib/firebase';
 import { isNative } from '../lib/platform';
 
 interface AuthValue {
@@ -26,6 +28,8 @@ interface AuthValue {
   // Returns the account email so the UI can confirm whose password changed.
   completePasswordReset: (code: string, newPassword: string) => Promise<string>;
   logout: () => Promise<void>;
+  // Permanently delete the account + its synced cloud data (Firestore doc).
+  deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthValue | undefined>(undefined);
@@ -72,6 +76,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return email;
     },
     logout: async () => { await signOut(auth!); },
+    deleteAccount: async () => {
+      const u = auth!.currentUser;
+      if (!u) return;
+      // Remove the user's synced data first, then the auth account itself.
+      if (db) { try { await deleteDoc(doc(db, 'users', u.uid)); } catch { /* ignore */ } }
+      await deleteUser(u); // throws auth/requires-recent-login if the session is old
+    },
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

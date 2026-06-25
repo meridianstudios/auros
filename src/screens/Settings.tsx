@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Moon, Sun, Bell, ExternalLink, Siren, Download } from 'lucide-react';
+import { Moon, Sun, Bell, ExternalLink, Siren, Download, Trash2, LogOut } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
 import { usePrefs, type NotifyPrefs } from '../lib/prefs';
 import { notify } from '../lib/notify';
 import { isNative } from '../lib/platform';
+import { useAuth } from '../context/AuthContext';
 
 function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -27,7 +28,25 @@ const NOTIFY_ROWS: { key: keyof NotifyPrefs; label: string; sub: string }[] = [
 export function Settings() {
   const { scheme, setScheme } = useTheme();
   const { prefs, setUnits, setNotify, setQuiet } = usePrefs();
+  const { ready, user, logout, deleteAccount } = useAuth();
   const [msg, setMsg] = useState<string | null>(null);
+  const [acctMsg, setAcctMsg] = useState<string | null>(null);
+
+  const handleDelete = async () => {
+    if (!window.confirm('Permanently delete your Auros account and everything synced to it? This cannot be undone.')) return;
+    setAcctMsg('Deleting…');
+    try {
+      await deleteAccount();
+      setAcctMsg(null);
+    } catch (e: unknown) {
+      const code = (e as { code?: string })?.code;
+      setAcctMsg(
+        code === 'auth/requires-recent-login'
+          ? 'For your security, sign out and sign back in, then delete again.'
+          : 'Could not delete the account. Please try again.'
+      );
+    }
+  };
 
   const test = async () => {
     const ok = await notify('Auros test', 'Notifications are working.');
@@ -106,6 +125,30 @@ export function Settings() {
             Plays the EAS-style tone and shows the alert box, as if a new warning were issued.
           </div>
         </div>
+
+        {ready && user && (
+          <>
+            <div className="label">Account</div>
+            <div className="card">
+              <div style={{ fontWeight: 600, fontSize: 15 }}>{user.email || 'Signed in'}</div>
+              <div className="dim" style={{ fontSize: 13, marginTop: 2 }}>Saved locations and settings sync to this account.</div>
+              <button className="btn btn-ghost" style={{ marginTop: 14, width: '100%' }} onClick={() => logout()}>
+                <LogOut size={16} /> Sign out
+              </button>
+              <button
+                className="btn btn-ghost"
+                style={{ marginTop: 10, width: '100%', color: '#e5484d', borderColor: 'rgba(229,72,77,.5)' }}
+                onClick={handleDelete}
+              >
+                <Trash2 size={16} /> Delete account
+              </button>
+              <div className="dim" style={{ fontSize: 12, marginTop: 8, lineHeight: 1.5 }}>
+                Permanently removes your account and everything synced to it. This can&rsquo;t be undone.
+              </div>
+              {acctMsg && <div className="muted" style={{ fontSize: 13, marginTop: 10 }}>{acctMsg}</div>}
+            </div>
+          </>
+        )}
 
         <div className="label">About</div>
         <div className="card">
