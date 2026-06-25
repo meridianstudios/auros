@@ -1,0 +1,72 @@
+name: android-aab
+
+# Manually build a signed, Play-ready Android App Bundle (.aab) for upload to the
+# Play Console. Run it from the Actions tab (Run workflow). The .aab is signed with
+# the upload key from the ANDROID_KEYSTORE_* secrets and published as a downloadable
+# artifact. Requires secrets: ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD
+# (plus the existing VITE_* secrets).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  aab:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+      - run: npm install --no-audit --no-fund # not `npm ci`: dodges npm's optional-dep bug (#4828)
+      - name: Build web app
+        env:
+          VITE_FB_API_KEY: ${{ secrets.VITE_FB_API_KEY }}
+          VITE_FB_AUTH_DOMAIN: ${{ secrets.VITE_FB_AUTH_DOMAIN }}
+          VITE_FB_PROJECT_ID: ${{ secrets.VITE_FB_PROJECT_ID }}
+          VITE_FB_STORAGE_BUCKET: ${{ secrets.VITE_FB_STORAGE_BUCKET }}
+          VITE_FB_SENDER_ID: ${{ secrets.VITE_FB_SENDER_ID }}
+          VITE_FB_APP_ID: ${{ secrets.VITE_FB_APP_ID }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.VITE_GOOGLE_CLIENT_SECRET }}
+        run: npm run build
+      - name: Add Android platform
+        run: npx cap add android
+      - name: Brand the launcher icon
+        continue-on-error: true
+        run: |
+          mkdir -p resources
+          cp src-tauri/icons/icon.png resources/icon.png
+          npx capacitor-assets generate --android
+      - name: Sync web build into Android
+        run: npx cap sync android
+      - name: Restore the upload keystore
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: echo "$KS_B64" | base64 -d > android/app/upload-keystore.jks
+      - name: Apply release signing config
+        run: |
+          cp ci/android-signing.gradle android/app/signing.gradle
+          echo "apply from: 'signing.gradle'" >> android/app/build.gradle
+      - name: Build signed release bundle
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ github.workspace }}/android/app/upload-keystore.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          cd android
+          chmod +x ./gradlew
+          ./gradlew bundleRelease --no-daemon
+      - name: Collect the .aab
+        run: cp android/app/build/outputs/bundle/release/app-release.aab auros.aab
+      - uses: actions/upload-artifact@v4
+        with:
+          name: auros-aab
+          path: auros.aab
+          if-no-files-found: error

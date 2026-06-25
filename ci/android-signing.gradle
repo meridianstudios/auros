@@ -1,0 +1,19 @@
+// Release signing for the Play upload bundle. Applied to android/app/build.gradle
+// only in CI (the android-aab workflow). Reads the upload key from environment
+// variables set from GitHub secrets, so no secret lives in this file. Local debug
+// builds never apply this and keep using the committed debug keystore.
+android {
+    signingConfigs {
+        release {
+            storeFile file(System.getenv("ANDROID_KEYSTORE_PATH"))
+            storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+            keyAlias "auros-upload"
+            keyPassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+        }
+    }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+        }
+    }
+}

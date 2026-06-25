@@ -31,3 +31,7 @@ dist-ssr
 # Capacitor (android/ is generated in CI via 'cap add android')
 /android
 resources/
+
+# Play upload signing key — PRIVATE, never commit (debug.keystore is fine to commit, this is not)
+ci/upload-keystore.jks
+ci/UPLOAD-KEY-CREDENTIALS.txt
