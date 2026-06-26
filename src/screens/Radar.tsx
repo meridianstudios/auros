@@ -98,7 +98,7 @@ export function Radar() {
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
-  const radarLayerRef = useRef<L.TileLayer | null>(null);
+  const radarFramesRef = useRef<L.TileLayer[]>([]); // one tile layer per animation frame
   const l3LayerRef = useRef<L.Layer | null>(null);
   const fittedRef = useRef<string | null>(null); // product:site we've already framed
 
@@ -153,15 +153,20 @@ export function Radar() {
     const ro = new ResizeObserver(fix);
     ro.observe(el);
 
-    radarLayerRef.current = L.tileLayer(refUrl(FRAMES.length - 1), {
-      opacity: 0.72,
-      maxNativeZoom: 14,
-      maxZoom: 16,
-      zIndex: 5,
-      updateWhenIdle: false,
-      errorTileUrl: TRANSPARENT,
-      attribution: 'NEXRAD: NWS / Iowa Environmental Mesonet',
-    }).addTo(map);
+    // One tile layer per animation frame, all kept loaded once shown; the loop
+    // just swaps which frame is visible via opacity, so it no longer reloads
+    // (flashes) tiles on every tick. Added to the map by the reflectivity effect.
+    radarFramesRef.current = FRAMES.map((_, i) =>
+      L.tileLayer(refUrl(i), {
+        opacity: 0,
+        maxNativeZoom: 14,
+        maxZoom: 16,
+        zIndex: 5,
+        updateWhenIdle: false,
+        errorTileUrl: TRANSPARENT,
+        attribution: 'NEXRAD: NWS / Iowa Environmental Mesonet',
+      })
+    );
 
     // Alert overlays (local advisories + nationwide warnings) live in a layer
     // group that is re-fetched on an interval, so expired alerts drop off, new
@@ -195,7 +200,7 @@ export function Radar() {
       ro.disconnect();
       map.remove();
       mapRef.current = null;
-      radarLayerRef.current = null;
+      radarFramesRef.current = [];
       l3LayerRef.current = null;
     };
   }, [selected.lat, selected.lon, scheme]);
@@ -233,10 +238,13 @@ export function Radar() {
     return () => { added.forEach((l) => { try { l.remove(); } catch { /* noop */ } }); };
   }, [tropical, selected.lat, selected.lon, scheme]);
 
-  // Optional GOES-East infrared satellite (cloud cover) beneath the radar.
+  // Optional GOES-East infrared satellite (cloud cover) beneath the radar. It's a
+  // single current snapshot, so we hide it while the radar loop is playing —
+  // otherwise storms animate over frozen clouds (a tester caught this). It returns
+  // when paused, where it lines up with the latest frame.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !satellite) return;
+    if (!map || !satellite || playing) return;
     const layer = L.tileLayer(`${IEM}/goes_east_conus_ch13/{z}/{x}/{y}.png`, {
       opacity: 0.55,
       zIndex: 3,
@@ -247,19 +255,23 @@ export function Radar() {
       attribution: 'GOES-East: NOAA / Iowa Environmental Mesonet',
     }).addTo(map);
     return () => { try { map.removeLayer(layer); } catch { /* noop */ } };
-  }, [satellite, selected.lat, selected.lon, scheme]);
+  }, [satellite, playing, selected.lat, selected.lon, scheme]);
 
-  // Reflectivity drives the live IEM tile layer (nationwide, animated).
+  // Reflectivity: keep every frame layer loaded on the map while it's selected,
+  // remove them otherwise.
   useEffect(() => {
     const map = mapRef.current;
-    const layer = radarLayerRef.current;
-    if (!map || !layer) return;
-    if (product === 'ref') {
-      if (!map.hasLayer(layer)) layer.addTo(map);
-      layer.setUrl(refUrl(idx));
-    } else if (map.hasLayer(layer)) {
-      map.removeLayer(layer);
-    }
+    const frames = radarFramesRef.current;
+    if (!map || !frames.length) return;
+    if (product === 'ref') frames.forEach((l) => { if (!map.hasLayer(l)) l.addTo(map); });
+    else frames.forEach((l) => { if (map.hasLayer(l)) map.removeLayer(l); });
+  }, [product]);
+
+  // Show the current frame by opacity only — tiles are already loaded, so the
+  // loop is smooth instead of flashing a fresh tile fetch each tick.
+  useEffect(() => {
+    if (product !== 'ref') return;
+    radarFramesRef.current.forEach((l, i) => l.setOpacity(i === idx ? 0.72 : 0));
   }, [product, idx]);
 
   useEffect(() => {
@@ -284,8 +296,15 @@ export function Radar() {
 
     const load = async () => {
       try {
-        const fetched = await fetchRecentL3(site.id, tiltProd, L3_FRAMES);
+        let fetched = await fetchRecentL3(site.id, tiltProd, L3_FRAMES);
         if (cancelled) return;
+        // Not every product is generated at every tilt (storm-rel especially). If
+        // the chosen tilt has no recent scan, fall back to the base 0.5° tilt
+        // rather than showing nothing.
+        if (!fetched.length && tilt !== 0) {
+          fetched = await fetchRecentL3(site.id, def.prod, L3_FRAMES);
+          if (cancelled) return;
+        }
         if (!fetched.length) { setL3Frames([]); setL3({ status: 'error', site: site.id, msg: 'No recent scan available' }); return; }
         const decoded = await Promise.all(
           fetched.map(async (f) => {

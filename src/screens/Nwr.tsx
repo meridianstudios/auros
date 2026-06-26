@@ -83,7 +83,7 @@ export function Nwr() {
             <div className="label">Listen live</div>
             <a
               className="card"
-              href={live.stream}
+              href="https://www.noaaweatherradio.org/"
               target="_blank"
               rel="noreferrer"
               style={{ display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none', color: 'var(--text)' }}
@@ -93,11 +93,11 @@ export function Nwr() {
               </span>
               <div className="grow">
                 <div style={{ fontWeight: 600 }}>{live.city}, {live.st} · {live.freq.toFixed(3)}</div>
-                <div className="muted" style={{ fontSize: 13 }}>Live audio stream ↗</div>
+                <div className="muted" style={{ fontSize: 13 }}>Find a live stream ↗</div>
               </div>
             </a>
             <div className="dim" style={{ fontSize: 11, marginBottom: 4, lineHeight: 1.5 }}>
-              Third-party stream — can lag 10s–2 min and won't alarm on its own.
+              Online NWR streams are volunteer-run and come and go, so this opens a directory to find a working one for your area. A stream can lag and won't alarm on its own.
             </div>
           </>
         )}

@@ -80,6 +80,25 @@ async function getDecoder() {
       add('159', ['N0X', 'N1X', 'N2X', 'N3X'], 'Differential Reflectivity', dualPol);
       add('163', ['N0K', 'N1K', 'N2K', 'N3K'], 'Specific Differential Phase', dualPol);
 
+      // Storm-relative velocity (N0S, code 56). The library ships a parser, but it
+      // reads the storm-motion fields and never reads compressionMethod /
+      // uncompressedProductSize, so the bzip-compressed symbology is never
+      // decompressed and decoding fails. Override its product description to read
+      // those at the standard positions (same as every other digital product).
+      // Bins are run-length level indices (0–15), coloured by srvColor, so the
+      // plot scale is nominal.
+      const srm = (data: Buffer | Uint8Array) => {
+        const b = Buffer.isBuffer(data) ? data : Buffer.from(data);
+        return {
+          elevationAngle: b.readInt16BE(0) / 10,
+          plot: { minimumDataValue: 0, dataIncrement: 1, dataLevels: 16 },
+          compressionMethod: b.readInt16BE(42),
+          uncompressedProductSize: (b.readUInt16BE(44) << 16) + b.readUInt16BE(46),
+        };
+      };
+      const p56 = reg.products['56'] as { productDescription?: unknown } | undefined;
+      if (p56) p56.productDescription = { halfwords30_53: srm };
+
       const mod = (await import('nexrad-level-3-data')) as unknown as {
         default?: (buf: Buffer, opts: unknown) => unknown;
       };
