@@ -30,7 +30,9 @@ function smoothPath(pts: { x: number; y: number }[]): string {
 }
 
 export function HourlyGraph({ hourly, units }: { hourly: NwsPeriod[]; units: Units }) {
-  const data = hourly.slice(0, 12);
+  // Show a full day; columns hold a min width so this overflows into a horizontal
+  // scroll (the .hg-scroll wrapper) instead of cramming everything on screen.
+  const data = hourly.slice(0, 24);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [cw, setCw] = useState(0);
   useEffect(() => {
