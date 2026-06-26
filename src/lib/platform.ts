@@ -13,3 +13,15 @@ function detectNativeRuntime(): boolean {
 }
 
 export const isNative: boolean = __IS_NATIVE__ || detectNativeRuntime();
+
+// True when running inside the Capacitor Android shell (a native WebView, NOT
+// Tauri). Detected at runtime because the same web bundle ships to the browser,
+// Tauri, and Capacitor. Used to avoid Firebase's signInWithPopup, which can't
+// complete inside an Android WebView (it dead-ends on a blank screen).
+function detectCapacitor(): boolean {
+  if (typeof window === 'undefined') return false;
+  const cap = (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
+  return !!(cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform());
+}
+
+export const isCapacitor: boolean = detectCapacitor();

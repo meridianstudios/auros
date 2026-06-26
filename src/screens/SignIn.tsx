@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { isNative } from '../lib/platform';
+import { isNative, isCapacitor } from '../lib/platform';
 import { googleNativeReady } from '../lib/googleOauth';
 import { PasswordResetModal } from '../components/PasswordResetModal';
 import type { View } from '../nav';
 
-// Web always has Google (popup); the native app only when its OAuth client is
-// configured at build time (otherwise it stays hidden and email/password rules).
-const showGoogle = !isNative || googleNativeReady();
+// Web uses the Google popup; Tauri desktop uses its loopback OAuth (only when the
+// client is configured). Capacitor (Android) gets neither — the popup can't
+// complete in a WebView — so Google is hidden there and email/password is used.
+const showGoogle = (!isNative && !isCapacitor) || (isNative && googleNativeReady());
 
 function prettyErr(e: unknown): string {
   const c = (e as { code?: string })?.code || '';
