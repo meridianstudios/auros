@@ -141,9 +141,22 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
     const dx = t.clientX - s.x;
     const dy = t.clientY - s.y;
     // Ignore taps and vertical scrolls — only a clear horizontal swipe cycles.
-    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
-    cycle(dx > 0); // swipe right → next location
+    if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy) * 1.3) return;
+    cycle(dx > 0); // swipe right → next, swipe left → previous
   };
+
+  // Desktop: Alt + Left/Right arrows cycle locations (matches the swipe).
+  useEffect(() => {
+    if (locations.length < 2) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.altKey) return;
+      if (e.key === 'ArrowRight') { e.preventDefault(); cycle(true); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); cycle(false); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locations, selectedId]);
 
   return (
     <div className="view fade home-view">
