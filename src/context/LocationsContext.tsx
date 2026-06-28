@@ -3,6 +3,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { geocode } from '../api/geocode';
 import { useAuth } from './AuthContext';
 import { db } from '../lib/firebase';
+import { isCapacitor } from '../lib/platform';
 
 export interface SavedLocation {
   id: string;
@@ -89,8 +90,25 @@ export function LocationsProvider({ children }: { children: ReactNode }) {
     setSelectedId(loc.id);
   };
 
-  const addByCurrentPosition = () =>
-    new Promise<void>((resolve, reject) => {
+  const addByCurrentPosition = async () => {
+    // On the Capacitor (Android) shell the browser geolocation API is denied by
+    // the WebView with no prompt, so use the native plugin: it asks for the OS
+    // permission and reads the device location directly.
+    if (isCapacitor) {
+      const { Geolocation } = await import('@capacitor/geolocation');
+      let perm = await Geolocation.checkPermissions();
+      if (perm.location !== 'granted' && perm.coarseLocation !== 'granted') {
+        perm = await Geolocation.requestPermissions({ permissions: ['location', 'coarseLocation'] });
+      }
+      if (perm.location !== 'granted' && perm.coarseLocation !== 'granted') {
+        throw new Error('Location permission denied. Enable it in your phone settings.');
+      }
+      const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: false, timeout: 10000 });
+      add('My Location', pos.coords.latitude, pos.coords.longitude);
+      return;
+    }
+    // Web + Tauri desktop: the browser API works (and prompts) normally.
+    await new Promise<void>((resolve, reject) => {
       if (!navigator.geolocation) return reject(new Error('Geolocation not supported'));
       navigator.geolocation.getCurrentPosition(
         (pos) => { add('My Location', pos.coords.latitude, pos.coords.longitude); resolve(); },
@@ -98,6 +116,7 @@ export function LocationsProvider({ children }: { children: ReactNode }) {
         { enableHighAccuracy: false, timeout: 10000 }
       );
     });
+  };
 
   const addByName = async (query: string) => {
     const r = await geocode(query);

@@ -1,7 +1,15 @@
 // Geocoding for "search by place".
-// Primary: Photon (photon.komoot.io) — OpenStreetMap-based, CORS-enabled, built
-// for type-ahead. Returns houses, streets, townships, counties, towns, etc.
+// Photon (photon.komoot.io) — OpenStreetMap-based, CORS-enabled, built for
+// type-ahead. Returns houses, streets, townships, counties, towns, etc.
+// For street addresses we also hit the U.S. Census geocoder (via our own
+// /api/geocode-address proxy), which interpolates house numbers along street
+// ranges and so finds homes OSM never mapped — common in rural areas.
 // Fallback: Open-Meteo (towns/cities only) if Photon is unreachable.
+
+// Our Vercel proxy that fronts the Census geocoder (Census sends no CORS header,
+// so it can't be called directly from the browser/WebView). Absolute so it works
+// identically from the web app and the native shells.
+const ADDRESS_API = 'https://auros.novalabsos.com/api/geocode-address';
 
 export interface GeocodeResult {
   name: string;
@@ -101,15 +109,53 @@ async function openMeteoSearch(query: string, count: number): Promise<GeocodeRes
   }));
 }
 
-// Autocomplete: several matches as the user types (Photon, Open-Meteo fallback).
+// Census returns SHOUTY addresses ("380 MARSHALL ST, COLDWATER, MI, 49036").
+// Title-case the street/city, keep the state abbreviation, drop the trailing ZIP.
+function prettyAddress(addr: string): string {
+  const parts = addr.split(',').map((s) => s.trim()).filter(Boolean);
+  const out = parts
+    .filter((p) => !/^\d{5}(-\d{4})?$/.test(p)) // drop ZIP
+    .map((p) => (/^[A-Z]{2}$/.test(p) ? p : p.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase())));
+  return out.join(', ');
+}
+
+// Exact U.S. street addresses via the Census proxy (with house-number interpolation).
+async function censusSearch(query: string): Promise<GeocodeResult[]> {
+  const res = await fetch(`${ADDRESS_API}?q=${encodeURIComponent(query)}`);
+  if (!res.ok) throw new Error(`Geocode ${res.status}`);
+  const data = await res.json();
+  return (data.matches ?? []).map((m: any) => ({
+    name: prettyAddress(m.address || ''),
+    lat: m.lat,
+    lon: m.lon,
+    kind: 'Address',
+  })).filter((r: GeocodeResult) => r.name && Number.isFinite(r.lat) && Number.isFinite(r.lon));
+}
+
+// Autocomplete: several matches as the user types. Photon drives the type-ahead;
+// for address-like queries (starting with a house number) we also fold in the
+// Census match up top so exact homes appear even when OSM is missing them.
 export async function searchPlaces(query: string, count = 6, bias?: { lat: number; lon: number }): Promise<GeocodeResult[]> {
-  try {
-    const r = await photonSearch(query, count, bias);
-    if (r.length) return r;
-  } catch {
-    /* fall through to Open-Meteo */
+  const q = query.trim();
+  const looksLikeAddress = /^\d+\s+\S/.test(q); // "380 marshall st…"
+
+  const photonP = photonSearch(q, count, bias).catch(() => [] as GeocodeResult[]);
+  const censusP = looksLikeAddress ? censusSearch(q).catch(() => [] as GeocodeResult[]) : Promise.resolve([] as GeocodeResult[]);
+  const [photon, census] = await Promise.all([photonP, censusP]);
+
+  if (photon.length || census.length) {
+    const out: GeocodeResult[] = [];
+    const seen = new Set<string>();
+    for (const r of [...census, ...photon]) {
+      const key = r.name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(r);
+      if (out.length >= count) break;
+    }
+    return out;
   }
-  return openMeteoSearch(query, count);
+  return openMeteoSearch(q, count);
 }
 
 // Single best match (used for plain "add by name").

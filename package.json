@@ -1,7 +1,7 @@
 {
   "name": "auros",
   "private": true,
-  "version": "1.0.6",
+  "version": "1.0.7",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,6 +13,7 @@
   "dependencies": {
     "@capacitor/android": "^8.4.1",
     "@capacitor/core": "^8.4.1",
+    "@capacitor/geolocation": "^8.2.0",
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-http": "^2.5.9",
     "@tauri-apps/plugin-notification": "^2.3.3",
