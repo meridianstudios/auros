@@ -119,30 +119,68 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
     .map((s) => ({ ...s, dist: haversineMiles(selected.lat, selected.lon, s.lat, s.lon) }))
     .sort((a, b) => a.dist - b.dist);
 
-  // Swipe the hero left/right to cycle through saved locations, with a slide.
+  // Swipe the hero to cycle locations: the content tracks your finger and the
+  // destination peeks in, then it commits (slide-in) or springs back. Natural
+  // carousel physics — drag left reveals the next, drag right the previous.
   const [animDir, setAnimDir] = useState<'l' | 'r'>('r');
-  const touchRef = useRef<{ x: number; y: number } | null>(null);
+  const heroContentRef = useRef<HTMLDivElement>(null);
+  const peekNextRef = useRef<HTMLDivElement>(null);
+  const peekPrevRef = useRef<HTMLDivElement>(null);
+  const startRef = useRef<{ x: number; y: number } | null>(null);
+  const axisRef = useRef<'?' | 'x' | 'y'>('?');
+  const dragXRef = useRef(0);
+
+  const curIdx = locations.findIndex((l) => l.id === selectedId);
+  const nextLoc = locations.length > 1 ? locations[(curIdx + 1) % locations.length] : null;
+  const prevLoc = locations.length > 1 ? locations[(curIdx - 1 + locations.length) % locations.length] : null;
+
+  // Paint the live drag straight to the DOM (no re-render) so it tracks at 60fps.
+  const paintDrag = (x: number) => {
+    dragXRef.current = x;
+    if (heroContentRef.current) heroContentRef.current.style.transform = x ? `translateX(${x}px)` : '';
+    const ramp = String(Math.min(1, Math.abs(x) / 110));
+    if (peekNextRef.current) peekNextRef.current.style.opacity = x < -8 ? ramp : '0';
+    if (peekPrevRef.current) peekPrevRef.current.style.opacity = x > 8 ? ramp : '0';
+  };
+
   const cycle = (forward: boolean) => {
     if (locations.length < 2) return;
-    const i = locations.findIndex((l) => l.id === selectedId);
-    const ni = (i + (forward ? 1 : -1) + locations.length) % locations.length;
     setAnimDir(forward ? 'r' : 'l');
-    select(locations[ni].id);
+    select(locations[(curIdx + (forward ? 1 : -1) + locations.length) % locations.length].id);
   };
+
   const onTouchStart = (e: TouchEvent) => {
     const t = e.touches[0];
-    touchRef.current = { x: t.clientX, y: t.clientY };
+    startRef.current = { x: t.clientX, y: t.clientY };
+    axisRef.current = '?';
+    if (heroContentRef.current) heroContentRef.current.style.transition = 'none';
   };
-  const onTouchEnd = (e: TouchEvent) => {
-    const s = touchRef.current;
-    touchRef.current = null;
-    if (!s) return;
-    const t = e.changedTouches[0];
+  const onTouchMove = (e: TouchEvent) => {
+    const s = startRef.current;
+    if (!s || locations.length < 2) return;
+    const t = e.touches[0];
     const dx = t.clientX - s.x;
     const dy = t.clientY - s.y;
-    // Ignore taps and vertical scrolls — only a clear horizontal swipe cycles.
-    if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy) * 1.3) return;
-    cycle(dx > 0); // swipe right → next, swipe left → previous
+    // Lock the axis on first move so we don't fight vertical scroll.
+    if (axisRef.current === '?' && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+      axisRef.current = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+    }
+    if (axisRef.current === 'x') { e.preventDefault(); paintDrag(dx); }
+  };
+  const onTouchEnd = () => {
+    const s = startRef.current;
+    const x = dragXRef.current;
+    startRef.current = null;
+    if (peekNextRef.current) peekNextRef.current.style.opacity = '0';
+    if (peekPrevRef.current) peekPrevRef.current.style.opacity = '0';
+    if (s && axisRef.current === 'x' && Math.abs(x) > 60) {
+      cycle(x < 0); // dragged far enough → switch (the new content slides in)
+    } else if (heroContentRef.current) {
+      // Not far enough → spring back to center.
+      heroContentRef.current.style.transition = 'transform 0.24s cubic-bezier(0.22,0.61,0.36,1)';
+      heroContentRef.current.style.transform = '';
+    }
+    dragXRef.current = 0;
   };
 
   // Desktop: Alt + Left/Right arrows cycle locations (matches the swipe).
@@ -163,11 +201,13 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
       <div className="app-header">
         <div className="brand"><Zap size={16} /> Auros</div>
       </div>
-      <div className={`hero${heroImg ? ' has-photo' : ''}`} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      <div className={`hero${heroImg ? ' has-photo' : ''}`} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
         {heroImg
           ? <div className="hero-photo" style={{ backgroundImage: `url("${heroImg}")` }} />
           : <HeroSky condition={w.current?.shortForecast} day={isDay} />}
-        <div className={`hero-content hero-anim-${animDir}`} key={selectedId}>
+        {nextLoc && <div className="hero-peek hero-peek-next" ref={peekNextRef}>{shortPlace(nextLoc.name)} <MapPin size={13} /></div>}
+        {prevLoc && <div className="hero-peek hero-peek-prev" ref={peekPrevRef}><MapPin size={13} /> {shortPlace(prevLoc.name)}</div>}
+        <div className={`hero-content hero-anim-${animDir}`} key={selectedId} ref={heroContentRef}>
           <div className="hero-top">
             <button className="place" onClick={() => onNavigate('locations')}>
               <MapPin size={14} /> {place} <ChevronDown size={13} style={{ opacity: 0.5 }} />
