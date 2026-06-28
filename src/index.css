@@ -97,6 +97,17 @@ input { font-family: inherit; }
 
 /* ---- Living hero sky ---- */
 .hero .place, .hero .hero-row, .hero .hero-stats { position: relative; z-index: 1; }
+
+/* ---- Swipe-to-switch-location: keyed content slides in on each change ---- */
+.hero-content { position: relative; z-index: 1; }
+.hero-anim-r { animation: hero-in-r 0.3s cubic-bezier(0.22, 0.61, 0.36, 1); }
+.hero-anim-l { animation: hero-in-l 0.3s cubic-bezier(0.22, 0.61, 0.36, 1); }
+@keyframes hero-in-r { from { opacity: 0; transform: translateX(26px); } to { opacity: 1; transform: none; } }
+@keyframes hero-in-l { from { opacity: 0; transform: translateX(-26px); } to { opacity: 1; transform: none; } }
+.hero-dots { position: relative; z-index: 1; display: flex; gap: 6px; justify-content: center; margin-top: 12px; }
+.hero-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); opacity: 0.35; transition: opacity 0.2s, width 0.2s, background 0.2s; }
+.hero-dot.on { opacity: 1; width: 18px; border-radius: 3px; background: var(--primary); }
+@media (prefers-reduced-motion: reduce) { .hero-anim-r, .hero-anim-l { animation: none; } }
 .hero-sky { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none;
   -webkit-mask-image: linear-gradient(to bottom, #000 38%, transparent 100%); mask-image: linear-gradient(to bottom, #000 38%, transparent 100%); }
 .sky-clear.is-day { background: radial-gradient(80% 85% at 93% -28%, rgba(255,201,132,0.13), transparent 60%); }

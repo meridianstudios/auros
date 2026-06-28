@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type TouchEvent } from 'react';
 import { MapPin, ChevronDown, ChevronRight, ShieldCheck, CloudLightning, Zap, RotateCw } from 'lucide-react';
 import { useLocations } from '../context/LocationsContext';
 import { useWeather } from '../hooks/useWeather';
@@ -70,7 +70,7 @@ function OutlookRow({ label, risk }: { label: string; risk: RiskMeta }) {
 }
 
 export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
-  const { selected } = useLocations();
+  const { selected, locations, selectedId, select } = useLocations();
   const { prefs } = usePrefs();
   const w = useWeather(selected.lat, selected.lon);
   const c = useConditions(selected.lat, selected.lon);
@@ -119,41 +119,81 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
     .map((s) => ({ ...s, dist: haversineMiles(selected.lat, selected.lon, s.lat, s.lon) }))
     .sort((a, b) => a.dist - b.dist);
 
+  // Swipe the hero left/right to cycle through saved locations, with a slide.
+  const [animDir, setAnimDir] = useState<'l' | 'r'>('r');
+  const touchRef = useRef<{ x: number; y: number } | null>(null);
+  const cycle = (forward: boolean) => {
+    if (locations.length < 2) return;
+    const i = locations.findIndex((l) => l.id === selectedId);
+    const ni = (i + (forward ? 1 : -1) + locations.length) % locations.length;
+    setAnimDir(forward ? 'r' : 'l');
+    select(locations[ni].id);
+  };
+  const onTouchStart = (e: TouchEvent) => {
+    const t = e.touches[0];
+    touchRef.current = { x: t.clientX, y: t.clientY };
+  };
+  const onTouchEnd = (e: TouchEvent) => {
+    const s = touchRef.current;
+    touchRef.current = null;
+    if (!s) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - s.x;
+    const dy = t.clientY - s.y;
+    // Ignore taps and vertical scrolls — only a clear horizontal swipe cycles.
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+    cycle(dx > 0); // swipe right → next location
+  };
+
   return (
     <div className="view fade home-view">
       <div className="app-header">
         <div className="brand"><Zap size={16} /> Auros</div>
       </div>
-      <div className={`hero${heroImg ? ' has-photo' : ''}`}>
+      <div className={`hero${heroImg ? ' has-photo' : ''}`} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         {heroImg
           ? <div className="hero-photo" style={{ backgroundImage: `url("${heroImg}")` }} />
           : <HeroSky condition={w.current?.shortForecast} day={isDay} />}
-        <div className="hero-top">
-          <button className="place" onClick={() => onNavigate('locations')}>
-            <MapPin size={14} /> {place} <ChevronDown size={13} style={{ opacity: 0.5 }} />
-          </button>
-          {w.updatedAt && (
-            <button className="refresh-btn" onClick={() => w.refresh()} aria-label="Refresh">
-              {ago(w.updatedAt)} <RotateCw size={12} />
+        <div className={`hero-content hero-anim-${animDir}`} key={selectedId}>
+          <div className="hero-top">
+            <button className="place" onClick={() => onNavigate('locations')}>
+              <MapPin size={14} /> {place} <ChevronDown size={13} style={{ opacity: 0.5 }} />
             </button>
+            {w.updatedAt && (
+              <button className="refresh-btn" onClick={() => w.refresh()} aria-label="Refresh">
+                {ago(w.updatedAt)} <RotateCw size={12} />
+              </button>
+            )}
+          </div>
+          <div className="hero-row">
+            <div>
+              <div className="temp">{w.current ? `${convertTemp(w.current.temperature, u)}°` : w.error ? '—' : <span className="skel skel-temp" />}</div>
+              <div className="cond">{w.current?.shortForecast ?? (w.error ? 'Unavailable' : <span className="skel skel-cond" />)}</div>
+            </div>
+            {w.current && <span className="hero-ic"><CondIcon p={w.current} size={46} color="var(--primary)" /></span>}
+          </div>
+          {w.current && (
+            <div className="hero-stats">
+              <div className="hstat"><span className="hk">Wind</span><span className="hv">{w.current.windDirection} {w.current.windSpeed}</span></div>
+              {w.current.probabilityOfPrecipitation?.value != null && (
+                <div className="hstat"><span className="hk">Precip</span><span className="hv">{w.current.probabilityOfPrecipitation.value}%</span></div>
+              )}
+              {w.riskTomorrow && (
+                <div className="hstat"><span className="hk">Tomorrow</span><span className="hv">{w.riskTomorrow.full}</span></div>
+              )}
+            </div>
           )}
         </div>
-        <div className="hero-row">
-          <div>
-            <div className="temp">{w.current ? `${convertTemp(w.current.temperature, u)}°` : w.error ? '—' : <span className="skel skel-temp" />}</div>
-            <div className="cond">{w.current?.shortForecast ?? (w.error ? 'Unavailable' : <span className="skel skel-cond" />)}</div>
-          </div>
-          {w.current && <span className="hero-ic"><CondIcon p={w.current} size={46} color="var(--primary)" /></span>}
-        </div>
-        {w.current && (
-          <div className="hero-stats">
-            <div className="hstat"><span className="hk">Wind</span><span className="hv">{w.current.windDirection} {w.current.windSpeed}</span></div>
-            {w.current.probabilityOfPrecipitation?.value != null && (
-              <div className="hstat"><span className="hk">Precip</span><span className="hv">{w.current.probabilityOfPrecipitation.value}%</span></div>
-            )}
-            {w.riskTomorrow && (
-              <div className="hstat"><span className="hk">Tomorrow</span><span className="hv">{w.riskTomorrow.full}</span></div>
-            )}
+        {locations.length > 1 && (
+          <div className="hero-dots">
+            {locations.map((l) => (
+              <button
+                key={l.id}
+                className={`hero-dot${l.id === selectedId ? ' on' : ''}`}
+                aria-label={`Show ${l.name}`}
+                onClick={() => { setAnimDir('r'); select(l.id); }}
+              />
+            ))}
           </div>
         )}
       </div>
