@@ -28,6 +28,15 @@ const FRAMES: Frame[] = [50, 45, 40, 35, 30, 25, 20, 15, 10, 5, 0].map((m) => ({
 }));
 const refUrl = (idx: number) => `${IEM}/nexrad-n0q-900913${FRAMES[idx].suffix}/{z}/{x}/{y}.png`;
 
+// Official NWS Watches/Warnings/Advisories overlay (ArcGIS MapServer export).
+// Layer 1 holds the zone-based alerts — Extreme Heat Warning, winter, wind,
+// flood, red flag, etc. — which carry no polygon in the /alerts feed and so were
+// missing from the map entirely (only storm-based polygons drew). Filtered to
+// warnings so advisories/watches/statements don't clutter the view.
+const WWA_EXPORT = 'https://mapservices.weather.noaa.gov/eventdriven/rest/services/WWA/watch_warn_adv/MapServer/export';
+const WWA_LAYERDEFS = encodeURIComponent("{\"1\":\"prod_type LIKE '%Warning%'\"}");
+const WORLD_M = 20037508.342789244; // half the EPSG:3857 world extent
+
 // 'ref' = nationwide IEM mosaic (tiles, animated). The rest are single-site
 // Level 3 products decoded + rendered client-side from the AWS bucket.
 type Product = 'ref' | 'reflSite' | 'velocity' | 'srv' | 'cc' | 'zdr' | 'kdp' | 'hydro';
@@ -168,11 +177,37 @@ export function Radar() {
       })
     );
 
-    // Alert overlays (local advisories + nationwide warnings) live in a layer
-    // group that is re-fetched on an interval, so expired alerts drop off, new
-    // ones appear, and updates are reflected — not a static one-shot draw.
+    // Nationwide warning areas (including zone-based ones like Extreme Heat
+    // Warning that carry no polygon) as a tinted overlay from the NWS WWA
+    // MapServer. Tiles render above the radar but below the interactive vector
+    // alerts. A cache-bust stamp is bumped on the alert interval so it stays
+    // current as warnings are issued / expire.
+    const wwa = L.tileLayer('', {
+      opacity: 0.5, zIndex: 6, maxNativeZoom: 11, maxZoom: 16, updateWhenIdle: true,
+      attribution: 'Warnings: NWS/NOAA',
+    });
+    (wwa.options as { stamp?: number }).stamp = 0;
+    (wwa as unknown as { getTileUrl: (c: L.Coords) => string }).getTileUrl = (coords: L.Coords) => {
+      const sz = (2 * WORLD_M) / 2 ** coords.z;
+      const xmin = -WORLD_M + coords.x * sz;
+      const ymax = WORLD_M - coords.y * sz;
+      const ts = wwa.getTileSize();
+      const stamp = (wwa.options as { stamp?: number }).stamp ?? 0;
+      return `${WWA_EXPORT}?bbox=${xmin},${ymax - sz},${xmin + sz},${ymax}` +
+        `&bboxSR=3857&imageSR=3857&size=${ts.x},${ts.y}&dpi=96&format=png32&transparent=true` +
+        `&layers=show:1&layerDefs=${WWA_LAYERDEFS}&f=image&_=${stamp}`;
+    };
+    wwa.addTo(map);
+
+    // Alert overlays (local advisories + nationwide storm warnings) live in a
+    // layer group that is re-fetched on an interval, so expired alerts drop off,
+    // new ones appear, and updates are reflected — not a static one-shot draw.
     const alertGroup = L.layerGroup().addTo(map);
     const drawAlerts = async () => {
+      // Refresh the nationwide WWA tint alongside the vector alerts.
+      const o = wwa.options as { stamp?: number };
+      o.stamp = (o.stamp ?? 0) + 1;
+      wwa.redraw();
       const [local, natl] = await Promise.all([
         getAlertGeometries(selected.lat, selected.lon).catch(() => [] as Awaited<ReturnType<typeof getAlertGeometries>>),
         getActiveWarnings().catch(() => [] as Awaited<ReturnType<typeof getActiveWarnings>>),
