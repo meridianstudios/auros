@@ -183,7 +183,11 @@ export function Radar() {
     // alerts. A cache-bust stamp is bumped on the alert interval so it stays
     // current as warnings are issued / expire.
     const wwa = L.tileLayer('', {
-      opacity: 0.5, zIndex: 6, maxNativeZoom: 11, maxZoom: 16, updateWhenIdle: true,
+      opacity: 0.5, zIndex: 6, maxNativeZoom: 11, maxZoom: 16,
+      // Match the radar's smooth tiling: fill while panning (not just when idle),
+      // keep a bigger surrounding buffer, and render errored/missing tiles as a
+      // transparent pixel instead of a black box (the "glitch black" on move/zoom).
+      updateWhenIdle: false, keepBuffer: 4, errorTileUrl: TRANSPARENT,
       attribution: 'Warnings: NWS/NOAA',
     });
     (wwa.options as { stamp?: number }).stamp = 0;
