@@ -9,7 +9,7 @@ import { pollenInfo } from '../api/pollen';
 import { useTropical } from '../hooks/useTropical';
 import { catColor, compass } from '../api/tropical';
 import { haversineMiles } from '../utils/geo';
-import { usePrefs, convertTemp, shouldNotifyAlert, isQuietNow } from '../lib/prefs';
+import { usePrefs, convertTemp, isQuietNow } from '../lib/prefs';
 import { RiskBadge } from '../components/RiskBadge';
 import { AlertCard } from '../components/AlertCard';
 import { CondIcon } from '../components/CondIcon';
@@ -60,6 +60,10 @@ function Tile({ k, v, sub, color }: { k: string; v: string; sub?: string; color?
 const SEV_RANK: Record<string, number> = { Extreme: 3, Severe: 2, Moderate: 1, Minor: 0 };
 const sevRank = (s?: string) => SEV_RANK[s ?? ''] ?? 0;
 
+// Storm heads-up dedup, kept at module scope so it survives Home unmounting and
+// remounting on navigation (a per-component ref would reset and re-notify).
+const stormSeen = new Set<string>();
+
 function OutlookRow({ label, risk }: { label: string; risk: RiskMeta }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13 }}>
@@ -78,7 +82,6 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
   const c = useConditions(selected.lat, selected.lon);
   const pollen = usePollen(selected.lat, selected.lon);
   const trop = useTropical();
-  const notified = useRef<Set<string>>(new Set());
   const u = prefs.units;
   // Tick so the "updated X ago" label stays current while the app is open.
   const [, setTick] = useState(0);
@@ -87,24 +90,18 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
     return () => clearInterval(t);
   }, []);
 
-  // Alert notifications, gated by per-event prefs + quiet hours.
-  useEffect(() => {
-    w.alerts.forEach((a) => {
-      if (!notified.current.has(a.id) && shouldNotifyAlert(a.event, prefs)) {
-        notified.current.add(a.id);
-        notify(a.event, a.headline ?? selected.name);
-      }
-    });
-  }, [w.alerts, prefs, selected.name]);
+  // Watch/warning notifications are handled app-wide by AlertAlarm (it seeds
+  // existing alerts and survives navigation, so it won't re-announce). Home only
+  // owns the storm-approach heads-up below.
 
   // Storm-approach heads-up (once per detected window).
   useEffect(() => {
     const tl = w.timeline;
     if (!tl || !prefs.notify.stormHeadsUp || isQuietNow(prefs.quiet)) return;
-    const key = `tl-${tl.startIso}`;
-    if (notified.current.has(key)) return;
-    notified.current.add(key);
-    notify('Storms expected', `${selected.name}: likely ${formatTime(tl.startIso)}–${formatTime(tl.endIso)}, peak ${tl.peakPop}%`);
+    const key = `tl-${selected.name}-${tl.startIso}`;
+    if (stormSeen.has(key)) return;
+    stormSeen.add(key);
+    notify('Storms expected', `${selected.name}: likely ${formatTime(tl.startIso)} to ${formatTime(tl.endIso)}, peak ${tl.peakPop}%`);
   }, [w.timeline, prefs, selected.name]);
 
   // Show the location the user actually chose. Only GPS-added spots (named the

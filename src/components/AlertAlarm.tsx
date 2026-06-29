@@ -5,6 +5,7 @@ import { useLocations } from '../context/LocationsContext';
 import { usePrefs, shouldNotifyAlert } from '../lib/prefs';
 import { severityColor } from '../theme/colors';
 import { playEasAttention, initAudioUnlock } from '../lib/eas';
+import { notify } from '../lib/notify';
 
 const POLL_MS = 90_000; // check for newly issued alerts every 90s
 
@@ -34,7 +35,12 @@ export function AlertAlarm() {
 
   const triggerAlarm = useCallback((a: NwsAlert) => {
     stopTone.current?.();
-    stopTone.current = prefs.notify.alarmSound ? playEasAttention(rank(a.event) >= 4 ? 10 : 7) : null;
+    // Only sound the tone when the tab is actually in front. A backgrounded tab
+    // suspends Web Audio, which previously left a tone scheduled that fired late
+    // and out of context when the user came back. The box + OS notification still
+    // alert them; they'll see the box (and can replay the tone) on return.
+    const visible = typeof document === 'undefined' || document.visibilityState === 'visible';
+    stopTone.current = prefs.notify.alarmSound && visible ? playEasAttention(rank(a.event) >= 4 ? 10 : 7) : null;
     setActive(a);
   }, [prefs.notify.alarmSound]);
 
@@ -76,7 +82,12 @@ export function AlertAlarm() {
       const alarmable = fresh
         .filter((a) => shouldNotifyAlert(a.event, prefs))
         .sort((a, b) => rank(b.event) - rank(a.event));
-      if (alarmable.length) triggerAlarm(alarmable[0]);
+      if (alarmable.length) {
+        const top = alarmable[0];
+        triggerAlarm(top);
+        // Single OS notification for the new alert (Home no longer notifies).
+        notify(top.event, top.headline ?? top.areaDesc ?? selected.name);
+      }
     };
     poll();
     const t = setInterval(poll, POLL_MS);

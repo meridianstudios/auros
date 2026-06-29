@@ -31,43 +31,56 @@ export function initAudioUnlock(): void {
 }
 
 // Play the two-tone attention signal for durationSec. Returns a stop fn (used to
-// silence it when the alarm is dismissed).
+// silence it when the alarm is dismissed). If the context is suspended (e.g. no
+// user gesture yet) the tone starts only once it actually resumes, scheduled
+// against a fresh clock — never against the frozen suspended time, which used to
+// make the tone fire late and out of sync.
 export function playEasAttention(durationSec = 8): () => void {
   const c = audioCtx();
   if (!c) return () => {};
-  if (c.state === 'suspended') c.resume().catch(() => {});
-
-  const gain = c.createGain();
-  const now = c.currentTime;
-  gain.gain.setValueAtTime(0.0001, now);
-  gain.gain.exponentialRampToValueAtTime(0.18, now + 0.06); // fade in
-  gain.connect(c.destination);
-
-  const make = (freq: number) => {
-    const o = c.createOscillator();
-    o.type = 'sine';
-    o.frequency.value = freq;
-    o.connect(gain);
-    return o;
-  };
-  const o1 = make(853);
-  const o2 = make(960);
-  const end = now + durationSec;
-  o1.start(now); o2.start(now);
-  gain.gain.setValueAtTime(0.18, end - 0.12);
-  gain.gain.exponentialRampToValueAtTime(0.0001, end); // fade out
-  o1.stop(end); o2.stop(end);
 
   let stopped = false;
+  let stopImpl: (() => void) | null = null;
+
+  const run = () => {
+    if (stopped || c.state !== 'running') return;
+    const gain = c.createGain();
+    const now = c.currentTime; // fresh — the context is running now
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.18, now + 0.06); // fade in
+    gain.connect(c.destination);
+
+    const make = (freq: number) => {
+      const o = c.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = freq;
+      o.connect(gain);
+      return o;
+    };
+    const o1 = make(853);
+    const o2 = make(960);
+    const end = now + durationSec;
+    o1.start(now); o2.start(now);
+    gain.gain.setValueAtTime(0.18, end - 0.12);
+    gain.gain.exponentialRampToValueAtTime(0.0001, end); // fade out
+    o1.stop(end); o2.stop(end);
+
+    stopImpl = () => {
+      try {
+        const t = c.currentTime;
+        gain.gain.cancelScheduledValues(t);
+        gain.gain.setValueAtTime(gain.gain.value, t);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+        o1.stop(t + 0.1); o2.stop(t + 0.1);
+      } catch { /* already stopped */ }
+    };
+  };
+
+  if (c.state === 'suspended') c.resume().then(run).catch(() => {});
+  else run();
+
   return () => {
-    if (stopped) return;
     stopped = true;
-    try {
-      const t = c.currentTime;
-      gain.gain.cancelScheduledValues(t);
-      gain.gain.setValueAtTime(gain.gain.value, t);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
-      o1.stop(t + 0.1); o2.stop(t + 0.1);
-    } catch { /* already stopped */ }
+    stopImpl?.();
   };
 }
