@@ -1,0 +1,16 @@
+rules_version = '2';
+
+// Auros stores only one thing per user: a document at users/{uid} holding their
+// saved locations + which one is selected. (Email + password live in Firebase
+// Authentication, never in Firestore, and are never readable from the client.)
+//
+// Rule: a signed-in user may read and write ONLY their own document. No anonymous
+// access, and no signed-in user can reach anyone else's data. Everything not
+// matched below is denied by default.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}

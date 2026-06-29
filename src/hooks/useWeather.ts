@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { getActiveAlerts, getForecast, getPoint, type NwsAlert, type NwsPeriod, type NwsPoint } from '../api/nws';
 import { getDayRisk } from '../api/spc';
 import { analyzeStormTimeline, type StormWindow } from '../api/timeline';
@@ -79,7 +79,25 @@ export function useWeather(lat: number, lon: number): UseWeather {
     setLoading(false);
   }, [lat, lon]);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  // On a location change (refresh's identity tracks lat/lon) drop the previous
+  // place's data before paint, so the hero shows a loading skeleton instead of
+  // the old location's temperature while the new one loads. Done in a layout
+  // effect to avoid even a one-frame flash of the stale numbers. The 5-minute
+  // interval below reuses refresh() WITHOUT clearing, so periodic same-location
+  // updates refresh in place with no flicker.
+  useLayoutEffect(() => {
+    setPoint(null);
+    setCurrent(null);
+    setHourly([]);
+    setDaily([]);
+    setTimeline(null);
+    setRisk(null);
+    setRiskTomorrow(null);
+    setRiskDay3(null);
+    setRiskError(false);
+    setAlerts([]);
+    refresh();
+  }, [refresh]);
 
   // Keep alerts / forecast / notifications current while the app stays open.
   useEffect(() => {
