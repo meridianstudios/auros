@@ -251,7 +251,7 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
         )}
       </div>
 
-      <div className="pad">
+      <div className="pad pad-swap" key={selectedId}>
         {warning && <SevereBanner alert={warning} onNavigate={onNavigate} />}
         {storms.length > 0 && (
           <>
@@ -304,10 +304,15 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
           </>
         ) : null}
 
-        {c && (
+        {(c || w.loading) && (
           <>
             <div className="label">Conditions</div>
-            <div className="cond-grid">
+            {!c ? (
+              <div className="cond-grid">
+                {Array.from({ length: 8 }).map((_, i) => <div key={i} className="skel skel-tile" />)}
+              </div>
+            ) : (
+            <div className="cond-grid sec-in">
               {c.feelsLikeF != null && <Tile k="Feels like" v={`${convertTemp(c.feelsLikeF, u)}°`} />}
               {c.humidity != null && <Tile k="Humidity" v={`${c.humidity}%`} />}
               {c.dewpointF != null && <Tile k="Dew point" v={`${convertTemp(c.dewpointF, u)}°`} />}
@@ -320,6 +325,7 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
               {c.sunrise && <Tile k="Sunrise" v={fmtClock(c.sunrise)} />}
               {c.sunset && <Tile k="Sunset" v={fmtClock(c.sunset)} />}
             </div>
+            )}
           </>
         )}
 
@@ -367,8 +373,12 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
                 </button>
               )}
             </div>
-            {w.alerts.length === 0 ? (
+            {w.loading && w.alerts.length === 0 ? (
               <div className="group">
+                <div className="item"><span className="skel skel-row" /></div>
+              </div>
+            ) : w.alerts.length === 0 ? (
+              <div className="group sec-in">
                 <div className="item">
                   <span className="ic" style={{ color: 'var(--success)' }}><ShieldCheck size={19} /></span>
                   <div className="grow">
@@ -383,11 +393,18 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
           </section>
           </div>
 
-          {w.daily.length > 0 && (
+          {(w.daily.length > 0 || w.loading) && (
             <div className="dash-side">
               <section className="block">
                 <div className="label">7-Day Forecast</div>
-                <div className="group">
+                {w.daily.length === 0 ? (
+                  <div className="group">
+                    {Array.from({ length: 7 }).map((_, i) => (
+                      <div className="item" key={i}><span className="skel skel-row" /></div>
+                    ))}
+                  </div>
+                ) : (
+                <div className="group sec-in">
                   {w.daily.filter((p) => p.isDaytime).slice(0, 7).map((p) => {
                     const pop = p.probabilityOfPrecipitation?.value ?? 0;
                     return (
@@ -400,6 +417,7 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
                     );
                   })}
                 </div>
+                )}
               </section>
             </div>
           )}
