@@ -6,19 +6,48 @@
 // and returns today's index + the active trigger plants with an open CORS header.
 // US only; returns {} when there's no data so the client can quietly skip it.
 
-async function zipFor(lat, lon) {
+// US Census ZCTA (ZIP) for the coordinates — reliable everywhere in the US, no
+// key or rate limits, doesn't depend on OSM having a postcode mapped.
+async function zipViaCensus(lat, lon) {
   try {
     const r = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=10&addressdetails=1`,
+      'https://geocoding.geo.census.gov/geocoder/geographies/coordinates' +
+        `?x=${lon}&y=${lat}&benchmark=Public_AR_Current&vintage=Current_Current&format=json&layers=all`,
+      { signal: AbortSignal.timeout(8000) }
+    );
+    if (!r.ok) return null;
+    const groups = (await r.json())?.result?.geographies || {};
+    for (const k of Object.keys(groups)) {
+      const arr = groups[k];
+      if (Array.isArray(arr)) {
+        for (const it of arr) {
+          if (it && it.ZCTA5) return String(it.ZCTA5).split('-')[0];
+        }
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// Fallback: OSM reverse geocode (needs a detailed zoom to surface the postcode).
+async function zipViaNominatim(lat, lon) {
+  try {
+    const r = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=18&addressdetails=1`,
       { headers: { 'User-Agent': 'AurosWeather/1.0 (https://auros.novalabsos.com)' }, signal: AbortSignal.timeout(7000) }
     );
     if (!r.ok) return null;
-    const d = await r.json();
-    const pc = d?.address?.postcode;
+    const pc = (await r.json())?.address?.postcode;
     return pc ? String(pc).split('-')[0].trim() : null;
   } catch {
     return null;
   }
+}
+
+async function zipFor(lat, lon) {
+  return (await zipViaCensus(lat, lon)) || (await zipViaNominatim(lat, lon));
 }
 
 export default async function handler(req, res) {
