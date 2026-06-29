@@ -4,8 +4,9 @@
 // builds never apply this and keep using the committed debug keystore.
 android {
     defaultConfig {
-        versionName "1.0.1"
-        // versionCode comes from the CI run number so every build is unique + increasing
+        // versionName tracks package.json (passed in via env); versionCode comes from
+        // the CI run number so every build is unique + increasing.
+        versionName (System.getenv("ANDROID_VERSION_NAME") ?: "1.0.13")
         def vc = System.getenv("ANDROID_VERSION_CODE")
         if (vc) { versionCode vc.toInteger() }
     }

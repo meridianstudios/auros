@@ -47,6 +47,15 @@ jobs:
           npx capacitor-assets generate --android
       - name: Sync web build into Android
         run: npx cap sync android
+      - name: Add location permissions to the Android manifest
+        # @capacitor/geolocation ships an empty manifest and requires the app to
+        # declare these itself, so inject them into the generated manifest (the
+        # android/ project is regenerated each run by `cap add`).
+        run: |
+          MF=android/app/src/main/AndroidManifest.xml
+          sed -i 's#</manifest>#    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n</manifest>#' "$MF"
+          echo "--- uses-permission entries now in the manifest ---"
+          grep -n "uses-permission" "$MF"
       - name: Restore the upload keystore
         env:
           KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -61,6 +70,8 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_VERSION_CODE: ${{ github.run_number }} # unique, increasing versionCode per build
         run: |
+          export ANDROID_VERSION_NAME=$(node -p "require('./package.json').version")
+          echo "versionName = $ANDROID_VERSION_NAME / versionCode = $ANDROID_VERSION_CODE"
           cd android
           chmod +x ./gradlew
           ./gradlew bundleRelease --no-daemon
