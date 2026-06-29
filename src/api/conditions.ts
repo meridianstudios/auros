@@ -11,6 +11,7 @@ export interface Conditions {
   visibilityM: number | null;
   uv: number | null;
   isDay: boolean;
+  localTime: string | null; // location-local ISO now ("2026-06-28T21:00")
   sunrise: string | null; // local ISO ("2026-06-20T06:29")
   sunset: string | null;
   aqi: number | null; // US AQI
@@ -44,6 +45,7 @@ export async function getConditions(lat: number, lon: number): Promise<Condition
     visibilityM: num(cur.visibility),
     uv: num(cur.uv_index),
     isDay: cur.is_day === 1,
+    localTime: typeof cur.time === 'string' ? cur.time : null,
     sunrise: day.sunrise?.[0] ?? null,
     sunset: day.sunset?.[0] ?? null,
     aqi: num(air.us_aqi),
@@ -68,4 +70,13 @@ export function uvInfo(uv: number): string {
   if (uv < 8) return 'High';
   if (uv < 11) return 'Very high';
   return 'Extreme';
+}
+
+// UV index color, matching the standard WHO scale (green → purple).
+export function uvColor(uv: number): string {
+  if (uv < 3) return '#4ADE80';
+  if (uv < 6) return '#FBBF24';
+  if (uv < 8) return '#FB923C';
+  if (uv < 11) return '#FB7185';
+  return '#C084FC';
 }

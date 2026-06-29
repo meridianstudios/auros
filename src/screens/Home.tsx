@@ -3,7 +3,9 @@ import { MapPin, ChevronDown, ChevronRight, ShieldCheck, CloudLightning, Zap, Ro
 import { useLocations } from '../context/LocationsContext';
 import { useWeather } from '../hooks/useWeather';
 import { useConditions } from '../hooks/useConditions';
-import { aqiInfo, uvInfo } from '../api/conditions';
+import { usePollen } from '../hooks/usePollen';
+import { aqiInfo, uvInfo, uvColor } from '../api/conditions';
+import { pollenInfo } from '../api/pollen';
 import { useTropical } from '../hooks/useTropical';
 import { catColor, compass } from '../api/tropical';
 import { haversineMiles } from '../utils/geo';
@@ -74,6 +76,7 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
   const { prefs } = usePrefs();
   const w = useWeather(selected.lat, selected.lon);
   const c = useConditions(selected.lat, selected.lon);
+  const pollen = usePollen(selected.lat, selected.lon);
   const trop = useTropical();
   const notified = useRef<Set<string>>(new Set());
   const u = prefs.units;
@@ -204,7 +207,7 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
       <div className={`hero${heroImg ? ' has-photo' : ''}`} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
         {heroImg
           ? <div className="hero-photo" style={{ backgroundImage: `url("${heroImg}")` }} />
-          : <HeroSky condition={w.current?.shortForecast} day={isDay} />}
+          : <HeroSky condition={w.current?.shortForecast} day={isDay} sunrise={c?.sunrise} sunset={c?.sunset} now={c?.localTime} />}
         {nextLoc && <div className="hero-peek hero-peek-next" ref={peekNextRef}>{shortPlace(nextLoc.name)} <MapPin size={13} /></div>}
         {prevLoc && <div className="hero-peek hero-peek-prev" ref={peekPrevRef}><MapPin size={13} /> {shortPlace(prevLoc.name)}</div>}
         <div className={`hero-content hero-anim-${animDir}`} key={selectedId} ref={heroContentRef}>
@@ -312,8 +315,9 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
               {c.humidity != null && <Tile k="Humidity" v={`${c.humidity}%`} />}
               {c.dewpointF != null && <Tile k="Dew point" v={`${convertTemp(c.dewpointF, u)}°`} />}
               {c.gustMph != null && <Tile k="Wind gust" v={u === 'C' ? `${Math.round(c.gustMph * 1.609)} km/h` : `${Math.round(c.gustMph)} mph`} />}
-              {c.uv != null && <Tile k="UV index" v={`${Math.round(c.uv)}`} sub={uvInfo(c.uv)} />}
+              {c.uv != null && <Tile k="UV index" v={`${Math.round(c.uv)}`} sub={uvInfo(c.uv)} color={uvColor(c.uv)} />}
               {c.aqi != null && <Tile k="Air quality" v={`${c.aqi}`} sub={aqiInfo(c.aqi).label} color={aqiInfo(c.aqi).color} />}
+              {pollen && <Tile k="Pollen" v={pollenInfo(pollen.index).label} sub={pollen.triggers.join(', ') || undefined} color={pollenInfo(pollen.index).color} />}
               {c.pressureHpa != null && <Tile k="Pressure" v={u === 'C' ? `${Math.round(c.pressureHpa)} hPa` : `${(c.pressureHpa * 0.02953).toFixed(2)} in`} />}
               {c.visibilityM != null && <Tile k="Visibility" v={u === 'C' ? `${Math.round(c.visibilityM / 1000)} km` : `${Math.round(c.visibilityM / 1609)} mi`} />}
               {c.sunrise && <Tile k="Sunrise" v={fmtClock(c.sunrise)} />}

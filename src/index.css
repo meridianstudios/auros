@@ -113,30 +113,88 @@ input { font-family: inherit; }
 .hero-dot.on { opacity: 1; width: 18px; border-radius: 3px; background: var(--primary); }
 @media (prefers-reduced-motion: reduce) { .hero-anim-r, .hero-anim-l { animation: none; } }
 .hero-sky { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none;
-  -webkit-mask-image: linear-gradient(to bottom, #000 38%, transparent 100%); mask-image: linear-gradient(to bottom, #000 38%, transparent 100%); }
-.sky-clear.is-day { background: radial-gradient(80% 85% at 93% -28%, rgba(255,201,132,0.13), transparent 60%); }
-.sky-clear.is-night { background: radial-gradient(80% 85% at 93% -28%, rgba(150,170,255,0.12), transparent 60%); }
-.sky-clouds { background: radial-gradient(110% 90% at 72% -22%, rgba(150,160,180,0.13), transparent 70%); }
-.sky-rain, .sky-storm { background: radial-gradient(115% 95% at 72% -22%, rgba(90,110,150,0.2), transparent 72%); }
-.sky-snow { background: radial-gradient(115% 95% at 72% -22%, rgba(165,180,205,0.16), transparent 72%); }
-.sky-fog { background: radial-gradient(120% 95% at 50% -22%, rgba(150,160,175,0.16), transparent 72%); }
-.hero-sky .stars { position: absolute; inset: 0; opacity: 0.5; animation: sky-twinkle 4s ease-in-out infinite;
-  background-image: radial-gradient(1.5px 1.5px at 18% 28%, #fff, transparent), radial-gradient(1.5px 1.5px at 38% 58%, #fff, transparent), radial-gradient(1px 1px at 62% 22%, #fff, transparent), radial-gradient(1.5px 1.5px at 80% 46%, #fff, transparent), radial-gradient(1px 1px at 52% 72%, #fff, transparent), radial-gradient(1px 1px at 28% 80%, #fff, transparent); }
-.hero-sky .cloud { position: absolute; border-radius: 50%; filter: blur(7px); background: radial-gradient(circle, rgba(195,205,225,0.5), rgba(195,205,225,0.12) 60%, transparent 75%); }
-.hero-sky .cloud.c1 { width: 150px; height: 72px; top: 4px; left: 4%; animation: sky-drift 30s ease-in-out infinite alternate; }
-.hero-sky .cloud.c2 { width: 190px; height: 84px; top: 44px; left: 40%; opacity: 0.8; animation: sky-drift 38s ease-in-out infinite alternate-reverse; }
-.hero-sky .cloud.c3 { width: 120px; height: 60px; top: -8px; left: 66%; opacity: 0.7; animation: sky-drift 34s ease-in-out infinite alternate; }
+  -webkit-mask-image: linear-gradient(to bottom, #000 52%, transparent 98%); mask-image: linear-gradient(to bottom, #000 52%, transparent 98%); }
+
+/* Clear sky: a time-of-day color wash (dawn / day / dusk / night). */
+.sky-clear.phase-dawn  { background: linear-gradient(165deg, rgba(255,168,118,0.20), rgba(255,124,150,0.10) 48%, transparent 80%); }
+.sky-clear.phase-day   { background: linear-gradient(165deg, rgba(108,176,255,0.16), rgba(162,206,255,0.06) 52%, transparent 82%); }
+.sky-clear.phase-dusk  { background: linear-gradient(165deg, rgba(255,146,84,0.20), rgba(168,108,216,0.12) 52%, transparent 82%); }
+.sky-clear.phase-night { background: linear-gradient(165deg, rgba(82,102,194,0.17), rgba(34,44,98,0.10) 52%, transparent 86%); }
+/* Overcast / wet skies: a muted tint, lighter by day. */
+.sky-clouds.is-day   { background: radial-gradient(120% 95% at 68% -25%, rgba(168,178,198,0.17), transparent 73%); }
+.sky-clouds.is-night { background: radial-gradient(120% 95% at 68% -25%, rgba(92,106,142,0.19), transparent 73%); }
+.sky-rain, .sky-storm { background: radial-gradient(120% 95% at 68% -25%, rgba(84,104,150,0.23), transparent 75%); }
+.sky-snow { background: radial-gradient(120% 95% at 68% -25%, rgba(172,186,212,0.19), transparent 75%); }
+.sky-fog  { background: linear-gradient(0deg, transparent, rgba(150,160,175,0.18) 55%, transparent); }
+
+/* Sun / moon — positioned along the day's arc by HeroSky. */
+.celestial { position: absolute; width: 52px; height: 52px; border-radius: 50%; transform: translate(-50%, -50%);
+  transition: left 1.2s linear, top 1.2s linear; }
+.celestial.sun { background: radial-gradient(circle at 50% 50%, #fff6d9 0%, #ffd66b 44%, #ffb340 72%, rgba(255,160,55,0) 76%);
+  box-shadow: 0 0 36px 9px rgba(255,196,92,0.45); animation: sun-pulse 5s ease-in-out infinite; }
+.celestial.moon { width: 40px; height: 40px; background: radial-gradient(circle at 38% 36%, #ffffff 0%, #e2e8f6 55%, #aeb9d6 100%);
+  box-shadow: 0 0 20px 5px rgba(202,216,255,0.34); }
+.celestial.moon::after { content: ''; position: absolute; inset: 0; border-radius: 50%;
+  background: radial-gradient(circle at 70% 30%, rgba(150,165,200,0.5) 0 4px, transparent 5px),
+              radial-gradient(circle at 50% 64%, rgba(150,165,200,0.42) 0 3px, transparent 4px),
+              radial-gradient(circle at 32% 48%, rgba(150,165,200,0.36) 0 2.5px, transparent 3.5px); }
+.celestial.dimmed { opacity: 0.5; }
+.celestial .rays { position: absolute; inset: -65%; border-radius: 50%; opacity: 0.22;
+  background: repeating-conic-gradient(from 0deg, rgba(255,212,120,0.55) 0deg 5deg, transparent 5deg 22deg);
+  -webkit-mask-image: radial-gradient(circle, #000 16%, transparent 60%); mask-image: radial-gradient(circle, #000 16%, transparent 60%);
+  animation: sun-rays 80s linear infinite; }
+
+/* Night stars — a soft scattered field concentrated up top, away from the text. */
+.hero-sky .stars { position: absolute; inset: 0; animation: sky-twinkle 5s ease-in-out infinite;
+  -webkit-mask-image: radial-gradient(125% 92% at 50% -5%, #000 55%, transparent); mask-image: radial-gradient(125% 92% at 50% -5%, #000 55%, transparent);
+  background-image:
+    radial-gradient(1px 1px at 12% 22%, rgba(255,255,255,0.9), transparent),
+    radial-gradient(1px 1px at 24% 50%, rgba(255,255,255,0.65), transparent),
+    radial-gradient(1.4px 1.4px at 38% 28%, #fff, transparent),
+    radial-gradient(1px 1px at 50% 58%, rgba(255,255,255,0.6), transparent),
+    radial-gradient(1px 1px at 63% 22%, rgba(255,255,255,0.85), transparent),
+    radial-gradient(1.3px 1.3px at 75% 46%, #fff, transparent),
+    radial-gradient(1px 1px at 85% 30%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1px 1px at 92% 54%, rgba(255,255,255,0.55), transparent),
+    radial-gradient(1px 1px at 31% 70%, rgba(255,255,255,0.5), transparent),
+    radial-gradient(1px 1px at 57% 76%, rgba(255,255,255,0.5), transparent); }
+
+/* Clouds. */
+.hero-sky .cloud { position: absolute; border-radius: 50%; filter: blur(7px); background: radial-gradient(circle, rgba(198,208,228,0.5), rgba(198,208,228,0.12) 60%, transparent 75%); }
+.hero-sky.is-night .cloud { background: radial-gradient(circle, rgba(150,162,190,0.42), rgba(150,162,190,0.1) 60%, transparent 75%); }
+.hero-sky .cloud.dark { background: radial-gradient(circle, rgba(118,128,150,0.55), rgba(118,128,150,0.14) 60%, transparent 75%); }
+.hero-sky .cloud.c1 { width: 150px; height: 72px; top: 8px; left: 4%; animation: sky-drift 30s ease-in-out infinite alternate; }
+.hero-sky .cloud.c2 { width: 190px; height: 84px; top: 40px; left: 40%; opacity: 0.8; animation: sky-drift 38s ease-in-out infinite alternate-reverse; }
+.hero-sky .cloud.c3 { width: 120px; height: 60px; top: -6px; left: 66%; opacity: 0.7; animation: sky-drift 34s ease-in-out infinite alternate; }
+
+/* Birds — a couple drifting across on clear days. */
+.hero-sky .bird { position: absolute; width: 13px; height: 8px; opacity: 0;
+  background:
+    linear-gradient(38deg, transparent 46%, rgba(60,70,92,0.6) 46% 54%, transparent 54%),
+    linear-gradient(-38deg, transparent 46%, rgba(60,70,92,0.6) 46% 54%, transparent 54%);
+  background-size: 50% 100%; background-position: left center, right center; background-repeat: no-repeat; }
+.hero-sky.is-night .bird { background-image:
+    linear-gradient(38deg, transparent 46%, rgba(220,228,245,0.45) 46% 54%, transparent 54%),
+    linear-gradient(-38deg, transparent 46%, rgba(220,228,245,0.45) 46% 54%, transparent 54%); }
+.hero-sky .bird.b1 { top: 22%; animation: bird-cross 28s linear infinite, bird-flap 0.6s ease-in-out infinite alternate; }
+.hero-sky .bird.b2 { top: 31%; transform: scale(0.78); animation: bird-cross 37s linear infinite 7s, bird-flap 0.55s ease-in-out infinite alternate; }
+
+/* Precipitation + atmosphere. */
 .hero-sky .rain { position: absolute; inset: -25%; opacity: 0.5; background-image: repeating-linear-gradient(108deg, transparent 0 6px, rgba(175,200,255,0.32) 6px 7px); background-size: 13px 13px; animation: sky-rain 0.55s linear infinite; }
 .hero-sky .snow { position: absolute; inset: -25%; opacity: 0.75; background-repeat: repeat; background-size: 180px 180px;
   background-image: radial-gradient(2px 2px at 12% 8%, #fff, transparent), radial-gradient(2px 2px at 32% 38%, #fff, transparent), radial-gradient(1.5px 1.5px at 52% 18%, #fff, transparent), radial-gradient(2px 2px at 72% 58%, #fff, transparent), radial-gradient(1.5px 1.5px at 86% 28%, #fff, transparent); animation: sky-snow 9s linear infinite; }
 .hero-sky .fog { position: absolute; inset: 0; filter: blur(8px); background: linear-gradient(0deg, transparent, rgba(185,193,205,0.22) 50%, transparent); animation: sky-fog 16s ease-in-out infinite alternate; }
-.hero-sky .flash { position: absolute; inset: 0; opacity: 0; background: radial-gradient(circle at 72% 18%, rgba(255,255,255,0.5), transparent 60%); animation: sky-flash 9s linear infinite; }
-@keyframes sky-twinkle { 0%,100% { opacity: 0.35 } 50% { opacity: 0.7 } }
+.hero-sky .flash { position: absolute; inset: 0; opacity: 0; background: radial-gradient(circle at 60% 16%, rgba(255,255,255,0.5), transparent 60%); animation: sky-flash 9s linear infinite; }
+@keyframes sky-twinkle { 0%,100% { opacity: 0.45 } 50% { opacity: 0.8 } }
 @keyframes sky-drift { from { transform: translateX(-22px) } to { transform: translateX(60px) } }
 @keyframes sky-rain { from { background-position: 0 0 } to { background-position: -13px 26px } }
 @keyframes sky-snow { from { background-position: 0 0 } to { background-position: 30px 180px } }
 @keyframes sky-fog { from { transform: translateX(-26px) } to { transform: translateX(26px) } }
 @keyframes sky-flash { 0%,90%,100% { opacity: 0 } 91% { opacity: 0.7 } 92% { opacity: 0.1 } 93% { opacity: 0.55 } 94% { opacity: 0 } }
+@keyframes sun-pulse { 0%,100% { box-shadow: 0 0 32px 7px rgba(255,196,92,0.40) } 50% { box-shadow: 0 0 46px 13px rgba(255,196,92,0.55) } }
+@keyframes sun-rays { to { transform: rotate(360deg) } }
+@keyframes bird-cross { 0% { left: -7%; opacity: 0 } 12% { opacity: 0.62 } 88% { opacity: 0.62 } 100% { left: 104%; opacity: 0 } }
+@keyframes bird-flap { from { background-size: 50% 72% } to { background-size: 50% 108% } }
 
 /* ---- Severe-weather focus banner ---- */
 .severe-banner { border-radius: var(--r); padding: 16px; margin-bottom: 14px; background: color-mix(in srgb, var(--sev) 13%, var(--surface)); border: 1.5px solid color-mix(in srgb, var(--sev) 55%, var(--border)); animation: sb-pulse 2.6s ease-out infinite; }
@@ -374,7 +432,6 @@ input[type="range"].slider::-moz-range-thumb { width: 16px; height: 16px; border
   .view { max-width: 760px; margin: 0 auto; }
   .radar-view { max-width: none; margin: 0; }
   .app-header .brand { display: none; }
-  .hero-sky { display: none; } /* animated sky only on mobile; plain hero on desktop */
 }
 
 /* ===== Desktop: home dashboard — wider + 2-column cards to fill the space ===== */
