@@ -14,6 +14,7 @@ import { Drawer } from './components/Drawer';
 import { SignIn } from './screens/SignIn';
 import { AuthProvider } from './context/AuthContext';
 import { AlertAlarm } from './components/AlertAlarm';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Radar pulls in Leaflet — code-split it so it loads only when the tab opens.
 const Radar = lazy(() => import('./screens/Radar').then((m) => ({ default: m.Radar })));
@@ -50,9 +51,11 @@ function Shell() {
     // Auros Live handles its own alert box + Weatherscan beeps, so AlertAlarm is
     // not mounted here (avoids a duplicate box + tone over the broadcast).
     return (
-      <Suspense fallback={<div className="center" style={{ position: 'fixed', inset: 0 }}><div className="spin" /></div>}>
-        <AurosLive onExit={() => setView('home')} />
-      </Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={<div className="center" style={{ position: 'fixed', inset: 0 }}><div className="spin" /></div>}>
+          <AurosLive onExit={() => setView('home')} />
+        </Suspense>
+      </ErrorBoundary>
     );
   }
 
@@ -72,7 +75,11 @@ function Shell() {
       {!online && <div className="offline-banner"><WifiOff size={13} /> You're offline — showing the latest saved data</div>}
       <button className="menu-fab" aria-label="Menu" onClick={openMenu}><MoreHorizontal size={20} /></button>
       <main className="main">
-        <Suspense fallback={<div className="center"><div className="spin" /></div>}>{screen}</Suspense>
+        {/* Keyed on view so navigating to another tab remounts the boundary and
+            clears the error — a crash on one screen doesn't strand the whole app. */}
+        <ErrorBoundary key={view}>
+          <Suspense fallback={<div className="center"><div className="spin" /></div>}>{screen}</Suspense>
+        </ErrorBoundary>
       </main>
       <nav className="tabbar">
         <div className="nav-brand"><Zap size={19} /> Auros</div>
