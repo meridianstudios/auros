@@ -248,22 +248,22 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
     return 1;
   };
   const topAlert = [...w.alerts].sort((a, b) => rankEvent(b.event) - rankEvent(a.event))[0] || null;
+  // Keep the NOW crawl short + punchy so it reads easily at the larger font —
+  // just the headline conditions, not every stat (those live in the panels).
   const nowSegs: string[] = [];
-  savedNow.forEach((s) => nowSegs.push(`${s.name}   ${s.temp != null ? `${convertTemp(s.temp, u)}°` : '--'}${s.label ? `  ${s.label}` : ''}`));
-  if (c?.feelsLikeF != null) nowSegs.push(`${place}: Feels like ${t(c.feelsLikeF)}`);
-  if (days[0]) nowSegs.push(`Today ${t(days[0].hi)}${days[0].lo != null ? `  ·  Tonight ${t(days[0].lo)}` : ''}`);
-  if (c?.humidity != null) nowSegs.push(`Humidity ${c.humidity}%`);
+  savedNow.forEach((s) => nowSegs.push(`${s.name}  ${s.temp != null ? `${convertTemp(s.temp, u)}°` : '--'}${s.label ? `  ${s.label}` : ''}`));
+  if (c?.feelsLikeF != null) nowSegs.push(`Feels like ${t(c.feelsLikeF)}`);
+  if (days[0]) nowSegs.push(`Today ${t(days[0].hi)}${days[0].lo != null ? `, Tonight ${t(days[0].lo)}` : ''}`);
   if (cur) nowSegs.push(`Wind ${cur.windDirection} ${cur.windSpeed}`);
-  if (c?.uv != null) nowSegs.push(`UV Index ${Math.round(c.uv)}  ·  ${uvInfo(c.uv)}`);
-  if (c?.aqi != null) nowSegs.push(`Air Quality ${c.aqi}  ·  ${aqiInfo(c.aqi).label}`);
-  if (pollen) nowSegs.push(`Pollen ${pollenInfo(pollen.index).label}${pollen.triggers.length ? `  ·  ${pollen.triggers.join(', ')}` : ''}`);
-  if (c?.sunrise && c?.sunset) nowSegs.push(`Sunrise ${fmtClockTime(c.sunrise)}  ·  Sunset ${fmtClockTime(c.sunset)}`);
-  nowSegs.push('Auros severe weather awareness  ·  brought to you by Meridian');
-  const nowText = nowSegs.join('          •          ') || `Auros Live — ${place}`;
+  if (c?.uv != null) nowSegs.push(`UV Index ${Math.round(c.uv)}, ${uvInfo(c.uv)}`);
+  nowSegs.push('Brought to you by Meridian');
+  const nowText = nowSegs.join('        •        ') || `Auros Live — ${place}`;
   const alertText = topAlert
     ? flat(`${topAlert.event} for ${topAlert.areaDesc}.  ${topAlert.description || topAlert.headline || ''}  ${topAlert.instruction || ''}`)
     : '';
   const crawlText = topAlert ? alertText : nowText;
+  // Scroll speed scales with length → consistent, readable pace regardless of content.
+  const crawlDur = `${Math.max(28, Math.round(crawlText.length * 0.2))}s`;
   const crawlTag = topAlert ? topAlert.event : 'NOW';
   const crawlClass = topAlert ? (/warning/i.test(topAlert.event) ? 'warn' : 'watch') : '';
   const tagStyle: CSSProperties | undefined = topAlert ? { background: severityColor(topAlert.severity, topAlert.event) } : undefined;
@@ -379,7 +379,7 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
       <div className={`live-crawl ${crawlClass}`}>
         <span className="live-crawl-tag" style={tagStyle}>{crawlTag}</span>
         <div className="live-crawl-mask">
-          <div className="live-crawl-track">
+          <div className="live-crawl-track" style={{ animationDuration: crawlDur }}>
             <span>{crawlText}</span>
             <span aria-hidden="true">{crawlText}</span>
           </div>
