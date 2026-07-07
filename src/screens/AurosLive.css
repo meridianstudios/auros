@@ -8,7 +8,7 @@
   --live-red: #C1121F; /* deeper broadcast red for the LIVE badge + warnings */
   display: grid;
   grid-template-columns: clamp(240px, 24vw, 320px) 1fr;
-  grid-template-rows: 1fr clamp(38px, 5vh, 52px);
+  grid-template-rows: 1fr clamp(28px, 3.8vh, 40px);
   gap: 14px;
   padding: 14px;
   color: var(--text);
@@ -172,8 +172,8 @@
 }
 .live-crawl-tag {
   flex: none; align-self: stretch; display: flex; align-items: center;
-  padding: 0 clamp(14px, 1.6vw, 22px);
-  font-size: clamp(10.5px, 1vw, 13px); font-weight: 800; letter-spacing: 1px; color: #fff;
+  padding: 0 clamp(10px, 1.2vw, 15px);
+  font-size: clamp(9px, 0.85vw, 11.5px); font-weight: 800; letter-spacing: 0.8px; color: #fff;
   text-transform: uppercase; white-space: nowrap; max-width: 42%; overflow: hidden; text-overflow: ellipsis;
   background: var(--primary);
 }
@@ -185,7 +185,7 @@
 .live-crawl-track {
   display: inline-flex; white-space: nowrap; will-change: transform;
   animation: live-marquee 48s linear infinite; /* duration overridden inline to scale with length */
-  font-size: clamp(14px, 1.25vw, 17px); font-weight: 600; letter-spacing: normal;
+  font-size: clamp(12px, 1.05vw, 15px); font-weight: 600; letter-spacing: normal;
 }
 .live-crawl.warn .live-crawl-track { color: color-mix(in srgb, var(--live-red) 55%, var(--text)); }
 .live-crawl-track span { padding: 0 2.5vw; }
