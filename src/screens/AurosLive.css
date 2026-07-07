@@ -1,0 +1,204 @@
+/* Auros Live — full-screen broadcast mode. Weatherscan layout (left "now" rail +
+   rotating stage + bottom crawl) reimagined in the dark Auros aesthetic. */
+
+.live {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  grid-template-columns: clamp(240px, 24vw, 320px) 1fr;
+  grid-template-rows: 1fr clamp(48px, 6vh, 66px);
+  gap: 14px;
+  padding: 14px;
+  color: var(--text);
+  background:
+    radial-gradient(120% 90% at 82% -12%, rgba(110, 139, 255, 0.16), transparent 55%),
+    radial-gradient(130% 100% at 6% 112%, rgba(110, 139, 255, 0.09), transparent 52%),
+    linear-gradient(160deg, #0b0e17, #070910 70%);
+  overflow: hidden;
+}
+
+/* ---- Controls (top-right) ---- */
+.live-controls {
+  position: absolute;
+  top: 20px;
+  right: 22px;
+  z-index: 5;
+  display: flex;
+  gap: 8px;
+}
+.live-controls button {
+  width: 38px; height: 38px;
+  display: grid; place-items: center;
+  border-radius: 10px;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+  transition: color 0.15s, background 0.15s;
+}
+.live-controls button:hover { color: var(--text); background: rgba(255, 255, 255, 0.1); }
+
+/* ---- Left "now" rail ---- */
+.live-rail {
+  grid-row: 1; grid-column: 1;
+  display: flex; flex-direction: column;
+  padding: clamp(18px, 2.4vw, 30px);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(28, 31, 43, 0.72), rgba(19, 22, 31, 0.72));
+  border: 1px solid var(--border);
+  backdrop-filter: blur(14px);
+  overflow: hidden;
+}
+.live-brand {
+  display: flex; align-items: center; gap: 8px;
+  font-size: clamp(17px, 1.5vw, 21px); font-weight: 700; letter-spacing: -0.3px;
+}
+.live-brand svg { color: var(--primary); }
+.live-badge {
+  margin-left: 2px; font-size: 10px; font-weight: 800; letter-spacing: 1px;
+  padding: 3px 7px; border-radius: 6px; color: #fff;
+  background: var(--danger);
+  position: relative; top: -1px;
+  animation: live-pulse 2.2s ease-in-out infinite;
+}
+@keyframes live-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+
+.live-clock { margin-top: clamp(20px, 3vh, 34px); }
+.live-date { color: var(--text-muted); font-size: clamp(13px, 1vw, 15px); font-weight: 600; }
+.live-time { font-size: clamp(24px, 2.6vw, 34px); font-weight: 700; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; margin-top: 2px; }
+
+.live-loc { display: flex; align-items: center; gap: 6px; margin-top: 18px; color: var(--primary); font-weight: 600; font-size: clamp(14px, 1.2vw, 17px); }
+.live-loc svg { flex: none; }
+
+.live-now { margin-top: auto; }
+.live-now-label { font-size: 11px; font-weight: 700; letter-spacing: 2px; color: var(--text-dim); }
+.live-now-main { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
+.live-now-temp { font-size: clamp(52px, 6vw, 82px); font-weight: 500; letter-spacing: -2px; line-height: 1; }
+.live-now-ic { flex: none; }
+.live-now-cond { font-size: clamp(15px, 1.3vw, 19px); color: var(--text); margin-top: 6px; }
+.live-now-feels { font-size: clamp(12px, 1vw, 14px); color: var(--text-muted); margin-top: 3px; }
+
+.live-rail-foot { margin-top: clamp(16px, 2.4vh, 26px); font-size: 12px; color: var(--text-dim); letter-spacing: 0.3px; }
+
+/* ---- Main stage ---- */
+.live-stage {
+  grid-row: 1; grid-column: 2;
+  display: flex; flex-direction: column;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(19, 22, 31, 0.6), rgba(11, 14, 22, 0.55));
+  border: 1px solid var(--border);
+  backdrop-filter: blur(14px);
+  overflow: hidden;
+  min-width: 0;
+}
+.live-topbar {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 14px;
+  padding: clamp(18px, 2.2vw, 28px) clamp(20px, 2.4vw, 34px) 0;
+}
+.live-panel-title {
+  font-size: clamp(22px, 2.4vw, 34px); font-weight: 700; letter-spacing: -0.5px;
+  position: relative; padding-bottom: 10px;
+}
+.live-panel-title::after {
+  content: ''; position: absolute; left: 0; bottom: 0; width: 46px; height: 3px; border-radius: 3px; background: var(--primary);
+}
+.live-topbar-loc { color: var(--text-muted); font-size: clamp(13px, 1.2vw, 17px); font-weight: 600; white-space: nowrap; }
+
+.live-panel { flex: 1; min-height: 0; display: flex; padding: clamp(16px, 2vw, 30px) clamp(20px, 2.4vw, 34px); animation: live-fade 0.55s cubic-bezier(0.22, 0.61, 0.36, 1); }
+@keyframes live-fade { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.live-empty { margin: auto; color: var(--text-muted); font-size: 16px; }
+
+/* Stat grid (Current Conditions + Sun & Air) */
+.live-grid { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; align-content: center; }
+.live-stat {
+  border-radius: 14px; padding: clamp(14px, 1.6vw, 22px);
+  background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.live-stat-ic { color: var(--primary); opacity: 0.9; }
+.live-stat-k { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-dim); margin-top: 6px; }
+.live-stat-v { font-size: clamp(22px, 2vw, 30px); font-weight: 600; letter-spacing: -0.5px; }
+.live-stat-sub { font-size: 12.5px; color: var(--text-muted); }
+
+/* Hourly */
+.live-hourly { flex: 1; display: flex; gap: 10px; align-items: stretch; }
+.live-hour {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  border-radius: 14px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border); padding: 12px 6px;
+}
+.live-hour-t { font-size: clamp(13px, 1.1vw, 16px); font-weight: 600; color: var(--text-muted); }
+.live-hour-temp { font-size: clamp(20px, 1.8vw, 27px); font-weight: 600; letter-spacing: -0.5px; }
+.live-hour-pop { font-size: 12.5px; color: var(--primary); font-weight: 600; }
+
+/* Extended */
+.live-ext { flex: 1; display: flex; gap: 12px; align-items: stretch; }
+.live-day {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 8px;
+  border-radius: 14px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border);
+  padding: clamp(14px, 1.6vw, 22px) 8px; text-align: center;
+}
+.live-day-name { font-size: clamp(15px, 1.4vw, 20px); font-weight: 700; letter-spacing: 0.3px; }
+.live-day-ic { margin: 2px 0; }
+.live-day-cond { font-size: clamp(11px, 1vw, 13.5px); color: var(--text-muted); line-height: 1.3; min-height: 2.4em; display: flex; align-items: center; }
+.live-day-pop { font-size: 12px; color: var(--primary); font-weight: 600; display: inline-flex; align-items: center; gap: 3px; }
+.live-day-hi { font-size: clamp(22px, 2vw, 30px); font-weight: 700; letter-spacing: -0.5px; margin-top: auto; }
+.live-day-lo { font-size: clamp(15px, 1.3vw, 19px); color: var(--text-muted); font-weight: 500; }
+
+/* Panel dots */
+.live-dots { display: flex; gap: 7px; justify-content: center; padding-bottom: 16px; }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); opacity: 0.3; transition: opacity 0.25s, width 0.25s, background 0.25s; }
+.live-dot.on { opacity: 1; width: 22px; border-radius: 4px; background: var(--primary); }
+
+/* ---- Bottom crawl ---- */
+.live-crawl {
+  grid-row: 2; grid-column: 1 / 3;
+  display: flex; align-items: center; gap: 0;
+  border-radius: 14px; overflow: hidden;
+  background: linear-gradient(90deg, rgba(28, 31, 43, 0.85), rgba(19, 22, 31, 0.85));
+  border: 1px solid var(--border);
+}
+.live-crawl-tag {
+  flex: none; align-self: stretch; display: flex; align-items: center;
+  padding: 0 clamp(14px, 1.6vw, 22px);
+  font-size: clamp(12px, 1.1vw, 15px); font-weight: 800; letter-spacing: 1.2px; color: #fff;
+  background: var(--primary);
+}
+.live-crawl.watch .live-crawl-tag { background: var(--warning); color: #1a1200; }
+.live-crawl.warn .live-crawl-tag { background: var(--danger); }
+.live-crawl.warn { border-color: color-mix(in srgb, var(--danger) 55%, var(--border)); animation: live-warnpulse 2.4s ease-out infinite; }
+@keyframes live-warnpulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger) 40%, transparent); } 70%, 100% { box-shadow: 0 0 0 8px transparent; } }
+.live-crawl-mask { flex: 1; overflow: hidden; }
+.live-crawl-track {
+  display: inline-flex; white-space: nowrap; will-change: transform;
+  animation: live-marquee 34s linear infinite;
+  font-size: clamp(14px, 1.3vw, 18px); font-weight: 600;
+  padding-left: 100%;
+}
+.live-crawl.warn .live-crawl-track { color: var(--danger); animation-duration: 26s; }
+.live-crawl-track span { padding: 0 3vw; }
+@keyframes live-marquee { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+
+/* ---- Responsive: stack on narrow / portrait screens ---- */
+@media (max-width: 760px) {
+  .live { grid-template-columns: 1fr; grid-template-rows: auto 1fr clamp(44px, 7vh, 60px); gap: 10px; padding: 10px; }
+  .live-rail { grid-row: 1; grid-column: 1; flex-direction: row; align-items: center; flex-wrap: wrap; gap: 10px 16px; padding: 14px 16px; }
+  .live-rail .live-clock { margin-top: 0; }
+  .live-now { margin-top: 0; margin-left: auto; }
+  .live-now-main { justify-content: flex-end; }
+  .live-now-temp { font-size: 46px; }
+  .live-rail-foot { display: none; }
+  .live-stage { grid-row: 2; grid-column: 1; }
+  .live-crawl { grid-row: 3; grid-column: 1; }
+  .live-grid { grid-template-columns: repeat(2, 1fr); }
+  .live-hourly { flex-wrap: wrap; }
+  .live-hour { flex: 1 1 20%; }
+  .live-ext { flex-wrap: wrap; }
+  .live-day { flex: 1 1 28%; }
+  .live-controls { top: 12px; right: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-panel, .live-badge, .live-crawl.warn { animation: none; }
+  .live-crawl-track { animation-duration: 60s; }
+}

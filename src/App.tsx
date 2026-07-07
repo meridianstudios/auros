@@ -17,6 +17,8 @@ import { AlertAlarm } from './components/AlertAlarm';
 
 // Radar pulls in Leaflet — code-split it so it loads only when the tab opens.
 const Radar = lazy(() => import('./screens/Radar').then((m) => ({ default: m.Radar })));
+// Auros Live is a full-screen broadcast mode — code-split it too.
+const AurosLive = lazy(() => import('./screens/AurosLive').then((m) => ({ default: m.AurosLive })));
 
 const TABS: { key: View; label: string; Icon: typeof House }[] = [
   { key: 'home', label: 'Home', Icon: House },
@@ -41,6 +43,19 @@ function Shell() {
       window.removeEventListener('offline', sync);
     };
   }, []);
+
+  // Auros Live takes over the whole screen (no tab bar). Keep AlertAlarm mounted
+  // so a new warning still breaks in with the box + tone even while broadcasting.
+  if (view === 'live') {
+    return (
+      <>
+        <Suspense fallback={<div className="center" style={{ position: 'fixed', inset: 0 }}><div className="spin" /></div>}>
+          <AurosLive onExit={() => setView('home')} />
+        </Suspense>
+        <AlertAlarm />
+      </>
+    );
+  }
 
   const screen =
     view === 'home' ? <Home onNavigate={setView} />

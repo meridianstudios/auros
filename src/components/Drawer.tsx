@@ -1,4 +1,4 @@
-import { X, MapPin, CalendarDays, Bell, Info, Moon, Sun, User, LogIn, LogOut } from 'lucide-react';
+import { X, MapPin, CalendarDays, Bell, Info, Moon, Sun, User, LogIn, LogOut, Tv } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import type { View } from '../nav';
@@ -38,6 +38,7 @@ export function Drawer({ open, onClose, onNavigate }: { open: boolean; onClose: 
           </div>
         )}
 
+        <button className="drawer-item" onClick={() => go('live')}><Tv size={19} /> Auros Live</button>
         <button className="drawer-item" onClick={() => go('locations')}><MapPin size={19} /> Locations</button>
         <button className="drawer-item" onClick={() => go('forecast')}><CalendarDays size={19} /> Full forecast</button>
         <button className="drawer-item" onClick={() => go('alerts')}><Bell size={19} /> Alerts</button>
