@@ -8,6 +8,7 @@ import { useConditions } from '../hooks/useConditions';
 import { usePollen } from '../hooks/usePollen';
 import { aqiInfo, uvInfo, uvColor } from '../api/conditions';
 import { pollenInfo } from '../api/pollen';
+import { useLandmarkImages } from '../api/landmark';
 import { usePrefs, convertTemp } from '../lib/prefs';
 import { CondIcon } from '../components/CondIcon';
 import { severityColor } from '../theme/colors';
@@ -117,6 +118,7 @@ function Stat({ icon, k, v, sub, color, i = 0 }: { icon: ReactNode; k: string; v
 export function AurosLive({ onExit }: { onExit: () => void }) {
   const { selected, locations, selectedId, select } = useLocations();
   const [locOpen, setLocOpen] = useState(false);
+  const [bgIdx, setBgIdx] = useState(0);
   const w = useWeather(selected.lat, selected.lon);
   const c = useConditions(selected.lat, selected.lon);
   const pollen = usePollen(selected.lat, selected.lon);
@@ -251,6 +253,17 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
   }, [prefs.liveAlertAutoHide]);
 
   const place = shortPlace(selected.name === 'My Location' && w.point?.city ? `${w.point.city}, ${w.point.state}` : selected.name);
+
+  // Photo backdrop: town/city images from the free Wikipedia media API, cycled
+  // slowly. Empty for places without photos → the plain dark background shows.
+  const bgImages = useLandmarkImages(place);
+  useEffect(() => { setBgIdx(0); }, [place]);
+  useEffect(() => {
+    if (bgImages.length < 2) return;
+    const id = setInterval(() => setBgIdx((i) => i + 1), 26_000);
+    return () => clearInterval(id);
+  }, [bgImages.length]);
+
   const dateStr = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
   const timeStr = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
   const cur = w.current;
@@ -312,6 +325,15 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
 
   return (
     <div className={`live${boxAlert || breakIn ? ' live--alert' : ''}`} role="region" aria-label="Auros Live">
+      {bgImages.length > 0 && (
+        <>
+          {bgImages.map((src, i) => (
+            <div key={src} className={`live-bg${i === bgIdx % bgImages.length ? ' on' : ''}`} style={{ backgroundImage: `url("${src}")` }} aria-hidden="true" />
+          ))}
+          <div className="live-scrim" aria-hidden="true" />
+        </>
+      )}
+
       {/* Left "now" rail */}
       <aside className="live-rail">
         <div className="live-brand"><Zap size={18} /> Auros <span className="live-badge">LIVE</span></div>

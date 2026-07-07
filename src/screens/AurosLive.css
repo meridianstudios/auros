@@ -19,6 +19,13 @@
   overflow: hidden;
 }
 
+/* Photo backdrop — town images behind the frosted panels; when there are none
+   the plain dark background above shows through. */
+.live-bg { position: absolute; inset: 0; z-index: 0; background-size: cover; background-position: center; opacity: 0; transition: opacity 1.4s ease; }
+.live-bg.on { opacity: 1; }
+.live-scrim { position: absolute; inset: 0; z-index: 0; background: linear-gradient(180deg, rgba(7, 9, 16, 0.58), rgba(7, 9, 16, 0.76)); }
+.live-rail, .live-stage, .live-crawl { position: relative; z-index: 1; }
+
 /* ---- Controls (top-right) ---- */
 .live-controls {
   display: flex;

@@ -17,10 +17,10 @@ const STATES: Record<string, string> = {
   WA: 'Washington', WV: 'West Virginia', WI: 'Wisconsin', WY: 'Wyoming', DC: 'Washington, D.C.',
 };
 
-// Reject location maps, flags, seals, coats of arms, and SVGs — we only want
-// actual photographs.
+// Reject location maps, flags, seals, coats of arms, logos, icons, and SVGs — we
+// only want actual photographs.
 function isPhoto(src: string): boolean {
-  return !/location|locator|_map|map_of|\.svg|flag_of|seal_of|coat_of/i.test(src);
+  return !/location|locator|_map|map_of|\.svg|flag_of|seal_of|coat_of|logo|_icon|emblem/i.test(src);
 }
 
 function pickImage(j: { thumbnail?: { source?: string }; originalimage?: { source?: string } }): string | null {
@@ -56,6 +56,79 @@ export async function getLandmarkImage(placeName: string): Promise<string | null
     }
   }
   return null;
+}
+
+// Derive the full-resolution original from a Wikimedia thumbnail URL (originals
+// are always served; on-demand resized widths get rate-limited).
+function originalFromThumb(src: string): string {
+  const url = src.startsWith('//') ? `https:${src}` : src;
+  return url.replace('/thumb/', '/').replace(/\/[^/]+$/, '');
+}
+
+const PHOTO_EXT = /\.(jpe?g|png)$/i;
+
+// Up to `max` real photos for a place, from the page's media list (free Wikipedia
+// REST API, one request). Used for the Auros Live photo backdrop; [] when the
+// place has no usable photos (so Live keeps its plain dark background).
+export async function getLandmarkImages(placeName: string, max = 5): Promise<string[]> {
+  const parts = placeName.split(',').map((s) => s.trim()).filter(Boolean);
+  const city = parts[0];
+  if (!city || /^\d/.test(city)) return [];
+  const stateName = parts.length > 1 ? STATES[parts[parts.length - 1].toUpperCase()] : undefined;
+  const titles = stateName ? [`${city}, ${stateName}`, city] : [city];
+  for (const title of titles) {
+    try {
+      const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/media-list/${encodeURIComponent(title)}`, {
+        headers: { Accept: 'application/json' },
+      });
+      if (!res.ok) continue;
+      const j = await res.json();
+      const items: { type?: string; title?: string; srcset?: { src?: string }[] }[] = Array.isArray(j.items) ? j.items : [];
+      const out: string[] = [];
+      const seen = new Set<string>();
+      for (const it of items) {
+        if (it.type !== 'image') continue;
+        const t = it.title || '';
+        if (!PHOTO_EXT.test(t) || !isPhoto(t)) continue;
+        const src = it.srcset?.[0]?.src;
+        if (!src) continue;
+        const orig = originalFromThumb(src);
+        if (!isPhoto(orig) || seen.has(orig)) continue;
+        seen.add(orig);
+        out.push(orig);
+        if (out.length >= max) break;
+      }
+      if (out.length) return out;
+    } catch {
+      /* try the next title */
+    }
+  }
+  return [];
+}
+
+// Resolve + cache (localStorage) up to a few photos for a place, for the Auros
+// Live cycling backdrop. Returns [] while loading / for places without photos.
+export function useLandmarkImages(placeName: string): string[] {
+  const [urls, setUrls] = useState<string[]>([]);
+  useEffect(() => {
+    let active = true;
+    setUrls([]);
+    if (!placeName) return;
+    const key = `auros.lmset.${placeName}`;
+    try {
+      const cached = localStorage.getItem(key);
+      if (cached !== null) { setUrls(cached ? JSON.parse(cached) : []); return; }
+    } catch { /* ignore */ }
+    getLandmarkImages(placeName)
+      .then((list) => {
+        if (!active) return;
+        try { localStorage.setItem(key, JSON.stringify(list)); } catch { /* ignore */ }
+        setUrls(list);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [placeName]);
+  return urls;
 }
 
 // Resolve + cache (localStorage) the hero image for a place. Returns null while
