@@ -8,7 +8,7 @@
   --live-red: #C1121F; /* deeper broadcast red for the LIVE badge + warnings */
   display: grid;
   grid-template-columns: clamp(240px, 24vw, 320px) 1fr;
-  grid-template-rows: 1fr clamp(60px, 9vh, 92px);
+  grid-template-rows: 1fr clamp(38px, 5vh, 52px);
   gap: 14px;
   padding: 14px;
   color: var(--text);
@@ -21,12 +21,9 @@
 
 /* ---- Controls (top-right) ---- */
 .live-controls {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  z-index: 5;
   display: flex;
   gap: 6px;
+  flex: none;
 }
 .live-controls button {
   width: 30px; height: 30px;
@@ -105,8 +102,8 @@
   min-width: 0;
 }
 .live-topbar {
-  display: flex; align-items: baseline; gap: 14px;
-  padding: clamp(18px, 2.2vw, 28px) 150px 0 clamp(20px, 2.4vw, 34px); /* right pad clears the floating controls */
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  padding: clamp(16px, 2vw, 24px) clamp(20px, 2.4vw, 34px) 0;
 }
 .live-panel-title {
   font-size: clamp(22px, 2.4vw, 34px); font-weight: 700; letter-spacing: -0.5px;
@@ -176,7 +173,7 @@
 .live-crawl-tag {
   flex: none; align-self: stretch; display: flex; align-items: center;
   padding: 0 clamp(14px, 1.6vw, 22px);
-  font-size: clamp(14px, 1.3vw, 19px); font-weight: 800; letter-spacing: 1.2px; color: #fff;
+  font-size: clamp(10.5px, 1vw, 13px); font-weight: 800; letter-spacing: 1px; color: #fff;
   text-transform: uppercase; white-space: nowrap; max-width: 42%; overflow: hidden; text-overflow: ellipsis;
   background: var(--primary);
 }
@@ -188,10 +185,10 @@
 .live-crawl-track {
   display: inline-flex; white-space: nowrap; will-change: transform;
   animation: live-marquee 48s linear infinite; /* duration overridden inline to scale with length */
-  font-size: clamp(18px, 1.7vw, 24px); font-weight: 600; letter-spacing: normal;
+  font-size: clamp(14px, 1.25vw, 17px); font-weight: 600; letter-spacing: normal;
 }
 .live-crawl.warn .live-crawl-track { color: color-mix(in srgb, var(--live-red) 55%, var(--text)); }
-.live-crawl-track span { padding: 0 3.5vw; }
+.live-crawl-track span { padding: 0 2.5vw; }
 @keyframes live-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
 /* ---- Responsive: stack on narrow / portrait screens ---- */

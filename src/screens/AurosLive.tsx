@@ -278,13 +278,6 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
 
   return (
     <div className={`live${breakIn ? ' live--alert' : ''}`} role="region" aria-label="Auros Live">
-      <div className="live-controls">
-        <button onClick={() => setPaused((p) => !p)} aria-label={paused ? 'Resume rotation' : 'Pause rotation'}>{paused ? <Play size={15} /> : <Pause size={15} />}</button>
-        <button onClick={advance} aria-label="Next panel"><SkipForward size={15} /></button>
-        <button onClick={() => setMuted((m) => !m)} aria-label={muted ? 'Unmute music' : 'Mute music'}>{muted ? <VolumeX size={15} /> : <Volume2 size={15} />}</button>
-        <button onClick={onExit} aria-label="Exit Auros Live"><X size={15} /></button>
-      </div>
-
       {/* Left "now" rail */}
       <aside className="live-rail">
         <div className="live-brand"><Zap size={18} /> Auros <span className="live-badge">LIVE</span></div>
@@ -326,6 +319,12 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
       <section className="live-stage">
         <div className="live-topbar">
           <span className="live-panel-title">{title}</span>
+          <div className="live-controls">
+            <button onClick={() => setPaused((p) => !p)} aria-label={paused ? 'Resume rotation' : 'Pause rotation'}>{paused ? <Play size={15} /> : <Pause size={15} />}</button>
+            <button onClick={advance} aria-label="Next panel"><SkipForward size={15} /></button>
+            <button onClick={() => setMuted((m) => !m)} aria-label={muted ? 'Unmute music' : 'Mute music'}>{muted ? <VolumeX size={15} /> : <Volume2 size={15} />}</button>
+            <button onClick={onExit} aria-label="Exit Auros Live"><X size={15} /></button>
+          </div>
         </div>
 
         <div className="live-panel" key={panel}>
