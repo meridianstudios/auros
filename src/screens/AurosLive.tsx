@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode, type CSSProperties } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { X, Pause, Play, Volume2, VolumeX, SkipForward, Zap, MapPin, Droplets, Wind, Gauge, Eye, Sunrise, Sunset, Umbrella, Thermometer, Leaf, TriangleAlert } from 'lucide-react';
+import { X, Pause, Play, Volume2, VolumeX, SkipForward, Zap, MapPin, ChevronDown, Droplets, Wind, Gauge, Eye, Sunrise, Sunset, Umbrella, Thermometer, Leaf, TriangleAlert } from 'lucide-react';
 import { useLocations } from '../context/LocationsContext';
 import { useWeather } from '../hooks/useWeather';
 import { useConditions } from '../hooks/useConditions';
@@ -114,7 +114,8 @@ function Stat({ icon, k, v, sub, color, i = 0 }: { icon: ReactNode; k: string; v
 }
 
 export function AurosLive({ onExit }: { onExit: () => void }) {
-  const { selected, locations } = useLocations();
+  const { selected, locations, selectedId, select } = useLocations();
+  const [locOpen, setLocOpen] = useState(false);
   const w = useWeather(selected.lat, selected.lon);
   const c = useConditions(selected.lat, selected.lon);
   const pollen = usePollen(selected.lat, selected.lon);
@@ -136,16 +137,22 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
     .sort((a, b) => (/tornado/i.test(b.event) ? 1 : 0) - (/tornado/i.test(a.event) ? 1 : 0))[0] || null;
   const breakIn = Boolean(breakInAlert);
 
-  // Panel rotation (paused during a break-in)
+  // Panel rotation. During a warning the stage keeps cycling (the crawl carries
+  // the alert detail); the severe-alert panel is just inserted into the loop so
+  // it still gets its own full-screen moment each cycle.
+  const activePanels = breakIn ? [{ key: 'alert', title: 'Severe Weather Alert' }, ...PANELS] : PANELS;
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
   useEffect(() => {
-    if (paused || breakIn) return;
-    const id = setInterval(() => setIdx((i) => (i + 1) % PANELS.length), PANEL_MS);
+    if (paused) return;
+    const id = setInterval(() => setIdx((i) => i + 1), PANEL_MS);
     return () => clearInterval(id);
-  }, [paused, breakIn]);
-  const advance = () => setIdx((i) => (i + 1) % PANELS.length);
-  const { key: panel, title } = PANELS[idx];
+  }, [paused]);
+  useEffect(() => { if (breakIn) setIdx(0); }, [breakIn]); // surface the alert first when it fires
+  const advance = () => setIdx((i) => i + 1);
+  const active = activePanels[idx % activePanels.length];
+  const panel = active.key;
+  const title = active.title;
 
   // Live multi-location NOW readout for the crawl (Open-Meteo current per saved place).
   const [savedNow, setSavedNow] = useState<{ name: string; temp: number | null; label: string }[]>([]);
@@ -262,8 +269,9 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
     ? flat(`${topAlert.event} for ${topAlert.areaDesc}.  ${topAlert.description || topAlert.headline || ''}  ${topAlert.instruction || ''}`)
     : '';
   const crawlText = topAlert ? alertText : nowText;
-  // Scroll speed scales with length → consistent, readable pace regardless of content.
-  const crawlDur = `${Math.max(28, Math.round(crawlText.length * 0.2))}s`;
+  // Scroll speed scales with length → consistent, readable pace. Alerts scroll
+  // slower (critical wording you want time to read).
+  const crawlDur = `${Math.max(topAlert ? 48 : 28, Math.round(crawlText.length * (topAlert ? 0.3 : 0.2)))}s`;
   const crawlTag = topAlert ? topAlert.event : 'NOW';
   const crawlClass = topAlert ? (/warning/i.test(topAlert.event) ? 'warn' : 'watch') : '';
   const tagStyle: CSSProperties | undefined = topAlert ? { background: severityColor(topAlert.severity, topAlert.event) } : undefined;
@@ -271,10 +279,10 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
   return (
     <div className={`live${breakIn ? ' live--alert' : ''}`} role="region" aria-label="Auros Live">
       <div className="live-controls">
-        <button onClick={() => setPaused((p) => !p)} aria-label={paused ? 'Resume rotation' : 'Pause rotation'}>{paused ? <Play size={18} /> : <Pause size={18} />}</button>
-        <button onClick={advance} aria-label="Next panel"><SkipForward size={18} /></button>
-        <button onClick={() => setMuted((m) => !m)} aria-label={muted ? 'Unmute music' : 'Mute music'}>{muted ? <VolumeX size={18} /> : <Volume2 size={18} />}</button>
-        <button onClick={onExit} aria-label="Exit Auros Live"><X size={18} /></button>
+        <button onClick={() => setPaused((p) => !p)} aria-label={paused ? 'Resume rotation' : 'Pause rotation'}>{paused ? <Play size={15} /> : <Pause size={15} />}</button>
+        <button onClick={advance} aria-label="Next panel"><SkipForward size={15} /></button>
+        <button onClick={() => setMuted((m) => !m)} aria-label={muted ? 'Unmute music' : 'Mute music'}>{muted ? <VolumeX size={15} /> : <Volume2 size={15} />}</button>
+        <button onClick={onExit} aria-label="Exit Auros Live"><X size={15} /></button>
       </div>
 
       {/* Left "now" rail */}
@@ -284,7 +292,24 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
           <div className="live-date">{dateStr}</div>
           <div className="live-time">{timeStr}</div>
         </div>
-        <div className="live-loc"><MapPin size={15} /> {place}</div>
+        <div className="live-loc-wrap">
+          <button className="live-loc" onClick={() => setLocOpen((o) => !o)} aria-label="Change location">
+            <MapPin size={15} /> {place}{locations.length > 1 && <ChevronDown size={14} style={{ opacity: 0.6 }} />}
+          </button>
+          {locOpen && (
+            <div className="live-loc-menu">
+              {locations.map((l) => (
+                <button
+                  key={l.id}
+                  className={`live-loc-opt${l.id === selectedId ? ' on' : ''}`}
+                  onClick={() => { select(l.id); setLocOpen(false); }}
+                >
+                  {shortPlace(l.name)}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <div className="live-now">
           <div className="live-now-label">NOW</div>
           <div className="live-now-main">
@@ -300,12 +325,11 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
       {/* Main stage */}
       <section className="live-stage">
         <div className="live-topbar">
-          <span className="live-panel-title">{breakIn ? 'Severe Weather Alert' : title}</span>
-          <span className="live-topbar-loc">{place}</span>
+          <span className="live-panel-title">{title}</span>
         </div>
 
-        <div className="live-panel" key={breakIn ? 'breakin' : panel}>
-          {breakIn && breakInAlert ? (
+        <div className="live-panel" key={panel}>
+          {panel === 'alert' && breakInAlert ? (
             <div className="live-breakin" style={{ '--sev': sevColor } as CSSProperties}>
               <div className="live-breakin-badge"><TriangleAlert size={22} /> {breakInAlert.severity?.toUpperCase() || 'SEVERE'}</div>
               <div className="live-breakin-event">{breakInAlert.event}</div>
@@ -368,11 +392,9 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
           )}
         </div>
 
-        {!breakIn && (
-          <div className="live-dots">
-            {PANELS.map((p, i) => <span key={p.key} className={`live-dot${i === idx ? ' on' : ''}`} />)}
-          </div>
-        )}
+        <div className="live-dots">
+          {activePanels.map((p, i) => <span key={p.key} className={`live-dot${i === idx % activePanels.length ? ' on' : ''}`} />)}
+        </div>
       </section>
 
       {/* Bottom crawl */}
