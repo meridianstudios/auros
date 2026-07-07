@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { X, Pause, Play, Volume2, VolumeX, SkipForward, Zap, MapPin, Droplets, Wind, Gauge, Eye, Sunrise, Sunset, Umbrella, Thermometer, Leaf } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type ReactNode, type CSSProperties } from 'react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { X, Pause, Play, Volume2, VolumeX, SkipForward, Zap, MapPin, Droplets, Wind, Gauge, Eye, Sunrise, Sunset, Umbrella, Thermometer, Leaf, TriangleAlert } from 'lucide-react';
 import { useLocations } from '../context/LocationsContext';
 import { useWeather } from '../hooks/useWeather';
 import { useConditions } from '../hooks/useConditions';
@@ -8,21 +10,40 @@ import { aqiInfo, uvInfo, uvColor } from '../api/conditions';
 import { pollenInfo } from '../api/pollen';
 import { usePrefs, convertTemp } from '../lib/prefs';
 import { CondIcon } from '../components/CondIcon';
+import { severityColor } from '../theme/colors';
 import type { NwsPeriod } from '../api/nws';
 import './AurosLive.css';
 
 // Auros Live — a continuous, Weatherscan-style local weather broadcast in the
 // Auros look: a persistent "now" rail, a main stage that auto-rotates through
-// panels, a bottom alert crawl, and optional looping background music.
+// panels (incl. a live radar), a scrolling NOW/alert crawl, optional looping
+// music, and a full-screen severe-weather break-in when a warning is active.
 
-type PanelKey = 'now' | 'hourly' | 'extended' | 'almanac';
+type PanelKey = 'now' | 'hourly' | 'radar' | 'extended' | 'almanac';
 const PANELS: { key: PanelKey; title: string }[] = [
   { key: 'now', title: 'Current Conditions' },
   { key: 'hourly', title: 'Hourly Forecast' },
+  { key: 'radar', title: 'Local Radar' },
   { key: 'extended', title: 'Extended Forecast' },
   { key: 'almanac', title: 'Sun & Air' },
 ];
-const PANEL_MS = 12_000; // seconds each panel holds before advancing
+const PANEL_MS = 12_000;
+
+const IEM = 'https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0';
+const WWA_EXPORT = 'https://mapservices.weather.noaa.gov/eventdriven/rest/services/WWA/watch_warn_adv/MapServer/export';
+const WWA_LAYERDEFS = encodeURIComponent("{\"1\":\"prod_type LIKE '%Warning%'\"}");
+const WORLD_M = 20037508.342789244;
+const TRANSPARENT = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/QBYAAAAAElFTkSuQmCC';
+
+// Open-Meteo WMO current-weather code → short label (for the multi-location crawl).
+const WMO: Record<number, string> = {
+  0: 'Clear', 1: 'Mainly Clear', 2: 'Partly Cloudy', 3: 'Cloudy', 45: 'Fog', 48: 'Fog',
+  51: 'Drizzle', 53: 'Drizzle', 55: 'Drizzle', 56: 'Freezing Drizzle', 57: 'Freezing Drizzle',
+  61: 'Rain', 63: 'Rain', 65: 'Heavy Rain', 66: 'Freezing Rain', 67: 'Freezing Rain',
+  71: 'Snow', 73: 'Snow', 75: 'Heavy Snow', 77: 'Snow', 80: 'Showers', 81: 'Showers', 82: 'Heavy Showers',
+  85: 'Snow Showers', 86: 'Snow Showers', 95: 'Thunderstorms', 96: 'Thunderstorms', 99: 'Thunderstorms',
+};
+const wmoLabel = (c?: number) => (c == null ? '' : WMO[c] ?? '');
 
 const shortPlace = (n: string) => {
   const p = n.split(',').map((s) => s.trim()).filter(Boolean);
@@ -51,9 +72,39 @@ const shuffle = (a: string[]) => {
   return b;
 };
 
-function Stat({ icon, k, v, sub, color }: { icon: ReactNode; k: string; v: string; sub?: string; color?: string }) {
+// Non-interactive regional radar for the broadcast: base + NEXRAD reflectivity +
+// the official warnings overlay + the location marker. Mounts/tears down with the
+// radar panel.
+function LiveRadar({ lat, lon }: { lat: number; lon: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const map = L.map(el, {
+      zoomControl: false, attributionControl: false, dragging: false,
+      scrollWheelZoom: false, doubleClickZoom: false, touchZoom: false, boxZoom: false, keyboard: false,
+    }).setView([lat, lon], 7);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', { maxNativeZoom: 16 }).addTo(map);
+    L.tileLayer(`${IEM}/nexrad-n0q-900913/{z}/{x}/{y}.png`, { opacity: 0.72, zIndex: 5, errorTileUrl: TRANSPARENT }).addTo(map);
+    const wwa = L.tileLayer('', { opacity: 0.5, zIndex: 6, errorTileUrl: TRANSPARENT });
+    (wwa as unknown as { getTileUrl: (c: L.Coords) => string }).getTileUrl = (coords: L.Coords) => {
+      const sz = (2 * WORLD_M) / 2 ** coords.z;
+      const xmin = -WORLD_M + coords.x * sz;
+      const ymax = WORLD_M - coords.y * sz;
+      const ts = wwa.getTileSize();
+      return `${WWA_EXPORT}?bbox=${xmin},${ymax - sz},${xmin + sz},${ymax}&bboxSR=3857&imageSR=3857&size=${ts.x},${ts.y}&dpi=96&format=png32&transparent=true&layers=show:1&layerDefs=${WWA_LAYERDEFS}&f=image`;
+    };
+    wwa.addTo(map);
+    L.circleMarker([lat, lon], { radius: 6, color: '#fff', weight: 2.5, fillColor: '#6E8BFF', fillOpacity: 1 }).addTo(map);
+    const t = setTimeout(() => map.invalidateSize(), 140);
+    return () => { clearTimeout(t); map.remove(); };
+  }, [lat, lon]);
+  return <div className="live-radar" ref={ref} />;
+}
+
+function Stat({ icon, k, v, sub, color, i = 0 }: { icon: ReactNode; k: string; v: string; sub?: string; color?: string; i?: number }) {
   return (
-    <div className="live-stat">
+    <div className="live-stat" style={{ animationDelay: `${i * 45}ms` }}>
       <span className="live-stat-ic">{icon}</span>
       <div className="live-stat-k">{k}</div>
       <div className="live-stat-v" style={color ? { color } : undefined}>{v}</div>
@@ -63,7 +114,7 @@ function Stat({ icon, k, v, sub, color }: { icon: ReactNode; k: string; v: strin
 }
 
 export function AurosLive({ onExit }: { onExit: () => void }) {
-  const { selected } = useLocations();
+  const { selected, locations } = useLocations();
   const w = useWeather(selected.lat, selected.lon);
   const c = useConditions(selected.lat, selected.lon);
   const pollen = usePollen(selected.lat, selected.lon);
@@ -78,24 +129,57 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
     return () => clearInterval(id);
   }, []);
 
-  // Panel rotation
+  // Severe-weather break-in: any active Severe/Extreme warning takes over the
+  // stage and pauses the rotation until it clears.
+  const breakInAlert = w.alerts
+    .filter((a) => /warning/i.test(a.event) && /extreme|severe/i.test(a.severity || ''))
+    .sort((a, b) => (/tornado/i.test(b.event) ? 1 : 0) - (/tornado/i.test(a.event) ? 1 : 0))[0] || null;
+  const breakIn = Boolean(breakInAlert);
+
+  // Panel rotation (paused during a break-in)
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
   useEffect(() => {
-    if (paused) return;
+    if (paused || breakIn) return;
     const id = setInterval(() => setIdx((i) => (i + 1) % PANELS.length), PANEL_MS);
     return () => clearInterval(id);
-  }, [paused]);
+  }, [paused, breakIn]);
   const advance = () => setIdx((i) => (i + 1) % PANELS.length);
   const { key: panel, title } = PANELS[idx];
 
-  // Alerts → crawl
-  const warnings = w.alerts.filter((a) => /warning/i.test(a.event));
-  const hasWarning = warnings.length > 0;
-  const crawlClass = hasWarning ? 'warn' : w.alerts.length ? 'watch' : '';
-  const crawlText = w.alerts.length
-    ? w.alerts.map((a) => (a.headline ? a.headline : a.event)).join('      •      ')
-    : `All clear across ${shortPlace(selected.name)} — no active watches, warnings, or advisories`;
+  // Crawl: alerts when present, otherwise a live multi-location NOW readout.
+  const alertsText = w.alerts.map((a) => (a.headline ? a.headline : a.event)).join('        •        ');
+  const [savedNow, setSavedNow] = useState<{ name: string; temp: number | null; label: string }[]>([]);
+  const [nowTick, setNowTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setNowTick((x) => x + 1), 600_000); // refresh the NOW crawl every 10 min
+    return () => clearInterval(id);
+  }, []);
+  useEffect(() => {
+    let live = true;
+    Promise.all(
+      locations.map(async (l) => {
+        try {
+          const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${l.lat}&longitude=${l.lon}&current=temperature_2m,weather_code&temperature_unit=fahrenheit`);
+          const d = await r.json();
+          return { name: shortPlace(l.name), temp: typeof d.current?.temperature_2m === 'number' ? d.current.temperature_2m : null, label: wmoLabel(d.current?.weather_code) };
+        } catch {
+          return null;
+        }
+      })
+    ).then((arr) => { if (live) setSavedNow(arr.filter(Boolean) as { name: string; temp: number | null; label: string }[]); });
+    return () => { live = false; };
+  }, [locations, nowTick]);
+
+  const nowText = savedNow.length
+    ? savedNow.map((s) => `${s.name}   ${s.temp != null ? `${convertTemp(s.temp, u)}°` : '--'}${s.label ? `  ${s.label}` : ''}`).join('        •        ')
+    : w.current
+    ? `${shortPlace(selected.name)}   ${t(w.current.temperature)}   ${w.current.shortForecast}`
+    : `Auros Live — ${shortPlace(selected.name)}`;
+
+  const crawlTag = breakIn ? 'WARNING' : w.alerts.length ? 'ALERTS' : 'NOW';
+  const crawlClass = breakIn ? 'warn' : w.alerts.length ? 'watch' : '';
+  const crawlText = w.alerts.length ? alertsText : nowText;
 
   // Background music (from public/live-music/tracks.json)
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -125,9 +209,9 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
     const a = audioRef.current;
     if (!a) return;
     a.muted = muted;
-    a.volume = hasWarning ? 0.12 : 0.5; // duck under an active warning — safety over ambiance
+    a.volume = breakIn ? 0.08 : 0.5; // duck hard under a break-in — safety over ambiance
     if (!muted && a.paused && tracks.length) a.play().catch(() => {});
-  }, [muted, hasWarning, tracks]);
+  }, [muted, breakIn, tracks]);
 
   // Esc exits
   useEffect(() => {
@@ -141,7 +225,6 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
   const timeStr = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
   const cur = w.current;
 
-  // Extended: pair each daytime period with the following night for the low.
   const days = useMemo(() => {
     const out: { label: string; p: NwsPeriod; hi: number; lo: number | null; pop: number }[] = [];
     for (let i = 0; i < w.daily.length && out.length < 6; i++) {
@@ -157,8 +240,13 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
     return out;
   }, [w.daily]);
 
+  const sevColor = breakInAlert ? severityColor(breakInAlert.severity, breakInAlert.event) : 'var(--live-red)';
+  const breakUntil = breakInAlert?.ends
+    ? new Date(breakInAlert.ends).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })
+    : '';
+
   return (
-    <div className="live" role="region" aria-label="Auros Live">
+    <div className={`live${breakIn ? ' live--alert' : ''}`} role="region" aria-label="Auros Live">
       <div className="live-controls">
         <button onClick={() => setPaused((p) => !p)} aria-label={paused ? 'Resume rotation' : 'Pause rotation'}>{paused ? <Play size={18} /> : <Pause size={18} />}</button>
         <button onClick={advance} aria-label="Next panel"><SkipForward size={18} /></button>
@@ -189,41 +277,50 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
       {/* Main stage */}
       <section className="live-stage">
         <div className="live-topbar">
-          <span className="live-panel-title">{title}</span>
+          <span className="live-panel-title">{breakIn ? 'Severe Weather Alert' : title}</span>
           <span className="live-topbar-loc">{place}</span>
         </div>
-        <div className="live-panel" key={panel}>
-          {panel === 'now' && (
-            <div className="live-grid">
-              {c?.feelsLikeF != null && <Stat icon={<Thermometer size={20} />} k="Feels Like" v={t(c.feelsLikeF)} />}
-              {cur?.probabilityOfPrecipitation?.value != null && <Stat icon={<Umbrella size={20} />} k="Rain Chance" v={`${cur.probabilityOfPrecipitation.value}%`} />}
-              {cur && <Stat icon={<Wind size={20} />} k="Wind" v={`${cur.windDirection} ${cur.windSpeed}`} />}
-              {c?.humidity != null && <Stat icon={<Droplets size={20} />} k="Humidity" v={`${c.humidity}%`} />}
-              {c?.dewpointF != null && <Stat icon={<Droplets size={20} />} k="Dew Point" v={t(c.dewpointF)} />}
-              {c?.pressureHpa != null && <Stat icon={<Gauge size={20} />} k="Pressure" v={u === 'C' ? `${Math.round(c.pressureHpa)} hPa` : `${(c.pressureHpa * 0.02953).toFixed(2)} in`} />}
-              {c?.visibilityM != null && <Stat icon={<Eye size={20} />} k="Visibility" v={u === 'C' ? `${Math.round(c.visibilityM / 1000)} km` : `${Math.round(c.visibilityM / 1609)} mi`} />}
-              {c?.uv != null && <Stat icon={<Zap size={20} />} k="UV Index" v={`${Math.round(c.uv)}`} sub={uvInfo(c.uv)} color={uvColor(c.uv)} />}
-            </div>
-          )}
 
-          {panel === 'hourly' && (
+        <div className="live-panel" key={breakIn ? 'breakin' : panel}>
+          {breakIn && breakInAlert ? (
+            <div className="live-breakin" style={{ '--sev': sevColor } as CSSProperties}>
+              <div className="live-breakin-badge"><TriangleAlert size={22} /> {breakInAlert.severity?.toUpperCase() || 'SEVERE'}</div>
+              <div className="live-breakin-event">{breakInAlert.event}</div>
+              {breakInAlert.areaDesc && <div className="live-breakin-area">{breakInAlert.areaDesc}</div>}
+              {breakUntil && <div className="live-breakin-until">In effect until {breakUntil}</div>}
+              {breakInAlert.instruction && <div className="live-breakin-instr">{breakInAlert.instruction}</div>}
+            </div>
+          ) : panel === 'now' ? (
+            <div className="live-grid">
+              {(() => { let n = 0; return [
+                c?.feelsLikeF != null && <Stat key="feels" i={n++} icon={<Thermometer size={20} />} k="Feels Like" v={t(c.feelsLikeF)} />,
+                cur?.probabilityOfPrecipitation?.value != null && <Stat key="rain" i={n++} icon={<Umbrella size={20} />} k="Rain Chance" v={`${cur.probabilityOfPrecipitation.value}%`} />,
+                cur && <Stat key="wind" i={n++} icon={<Wind size={20} />} k="Wind" v={`${cur.windDirection} ${cur.windSpeed}`} />,
+                c?.humidity != null && <Stat key="hum" i={n++} icon={<Droplets size={20} />} k="Humidity" v={`${c.humidity}%`} />,
+                c?.dewpointF != null && <Stat key="dew" i={n++} icon={<Droplets size={20} />} k="Dew Point" v={t(c.dewpointF)} />,
+                c?.pressureHpa != null && <Stat key="pres" i={n++} icon={<Gauge size={20} />} k="Pressure" v={u === 'C' ? `${Math.round(c.pressureHpa)} hPa` : `${(c.pressureHpa * 0.02953).toFixed(2)} in`} />,
+                c?.visibilityM != null && <Stat key="vis" i={n++} icon={<Eye size={20} />} k="Visibility" v={u === 'C' ? `${Math.round(c.visibilityM / 1000)} km` : `${Math.round(c.visibilityM / 1609)} mi`} />,
+                c?.uv != null && <Stat key="uv" i={n++} icon={<Zap size={20} />} k="UV Index" v={`${Math.round(c.uv)}`} sub={uvInfo(c.uv)} color={uvColor(c.uv)} />,
+              ]; })()}
+            </div>
+          ) : panel === 'hourly' ? (
             <div className="live-hourly">
-              {w.hourly.slice(0, 8).map((h) => (
-                <div className="live-hour" key={h.startTime}>
+              {w.hourly.slice(0, 8).map((h, i) => (
+                <div className="live-hour" key={h.startTime} style={{ animationDelay: `${i * 45}ms` }}>
                   <div className="live-hour-t">{fmtHour(h.startTime)}</div>
                   <div className="live-hour-ic"><CondIcon p={h} size={34} color="var(--primary)" /></div>
                   <div className="live-hour-temp">{t(h.temperature)}</div>
-                  <div className="live-hour-pop">{(h.probabilityOfPrecipitation?.value ?? 0)}%</div>
+                  <div className="live-hour-pop">{h.probabilityOfPrecipitation?.value ?? 0}%</div>
                 </div>
               ))}
               {w.hourly.length === 0 && <div className="live-empty">{w.loading ? 'Loading hourly forecast…' : 'Hourly forecast unavailable'}</div>}
             </div>
-          )}
-
-          {panel === 'extended' && (
+          ) : panel === 'radar' ? (
+            <LiveRadar lat={selected.lat} lon={selected.lon} />
+          ) : panel === 'extended' ? (
             <div className="live-ext">
-              {days.map((d) => (
-                <div className="live-day" key={d.p.startTime}>
+              {days.map((d, i) => (
+                <div className="live-day" key={d.p.startTime} style={{ animationDelay: `${i * 55}ms` }}>
                   <div className="live-day-name">{d.label}</div>
                   <div className="live-day-ic"><CondIcon p={d.p} size={40} color="var(--primary)" /></div>
                   <div className="live-day-cond">{d.p.shortForecast}</div>
@@ -234,29 +331,30 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
               ))}
               {days.length === 0 && <div className="live-empty">{w.loading ? 'Loading extended forecast…' : 'Extended forecast unavailable'}</div>}
             </div>
-          )}
-
-          {panel === 'almanac' && (
+          ) : (
             <div className="live-grid">
-              {c?.sunrise && <Stat icon={<Sunrise size={20} />} k="Sunrise" v={fmtClockTime(c.sunrise)} />}
-              {c?.sunset && <Stat icon={<Sunset size={20} />} k="Sunset" v={fmtClockTime(c.sunset)} />}
-              {c?.uv != null && <Stat icon={<Zap size={20} />} k="UV Index" v={`${Math.round(c.uv)}`} sub={uvInfo(c.uv)} color={uvColor(c.uv)} />}
-              {c?.aqi != null && <Stat icon={<Wind size={20} />} k="Air Quality" v={`${c.aqi}`} sub={aqiInfo(c.aqi).label} color={aqiInfo(c.aqi).color} />}
-              {pollen && <Stat icon={<Leaf size={20} />} k="Pollen" v={pollenInfo(pollen.index).label} sub={pollen.triggers.join(', ') || undefined} color={pollenInfo(pollen.index).color} />}
-              {c?.dewpointF != null && <Stat icon={<Droplets size={20} />} k="Dew Point" v={t(c.dewpointF)} />}
+              {(() => { let n = 0; return [
+                c?.sunrise && <Stat key="sr" i={n++} icon={<Sunrise size={20} />} k="Sunrise" v={fmtClockTime(c.sunrise)} />,
+                c?.sunset && <Stat key="ss" i={n++} icon={<Sunset size={20} />} k="Sunset" v={fmtClockTime(c.sunset)} />,
+                c?.uv != null && <Stat key="uv2" i={n++} icon={<Zap size={20} />} k="UV Index" v={`${Math.round(c.uv)}`} sub={uvInfo(c.uv)} color={uvColor(c.uv)} />,
+                c?.aqi != null && <Stat key="aqi" i={n++} icon={<Wind size={20} />} k="Air Quality" v={`${c.aqi}`} sub={aqiInfo(c.aqi).label} color={aqiInfo(c.aqi).color} />,
+                pollen && <Stat key="pol" i={n++} icon={<Leaf size={20} />} k="Pollen" v={pollenInfo(pollen.index).label} sub={pollen.triggers.join(', ') || undefined} color={pollenInfo(pollen.index).color} />,
+                c?.dewpointF != null && <Stat key="dew2" i={n++} icon={<Droplets size={20} />} k="Dew Point" v={t(c.dewpointF)} />,
+              ]; })()}
             </div>
           )}
         </div>
 
-        {/* Panel progress dots */}
-        <div className="live-dots">
-          {PANELS.map((p, i) => <span key={p.key} className={`live-dot${i === idx ? ' on' : ''}`} />)}
-        </div>
+        {!breakIn && (
+          <div className="live-dots">
+            {PANELS.map((p, i) => <span key={p.key} className={`live-dot${i === idx ? ' on' : ''}`} />)}
+          </div>
+        )}
       </section>
 
-      {/* Bottom alert crawl */}
+      {/* Bottom crawl */}
       <div className={`live-crawl ${crawlClass}`}>
-        <span className="live-crawl-tag">{hasWarning ? 'WARNING' : w.alerts.length ? 'ALERTS' : 'NOW'}</span>
+        <span className="live-crawl-tag">{crawlTag}</span>
         <div className="live-crawl-mask">
           <div className="live-crawl-track">
             <span>{crawlText}</span>
