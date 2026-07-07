@@ -27,7 +27,7 @@ const NOTIFY_ROWS: { key: keyof NotifyPrefs; label: string; sub: string }[] = [
 
 export function Settings() {
   const { scheme, setScheme } = useTheme();
-  const { prefs, setUnits, setNotify, setQuiet } = usePrefs();
+  const { prefs, setUnits, setNotify, setQuiet, setLiveAlertAutoHide } = usePrefs();
   const { ready, user, logout, deleteAccount } = useAuth();
   const [msg, setMsg] = useState<string | null>(null);
   const [acctMsg, setAcctMsg] = useState<string | null>(null);
@@ -104,6 +104,17 @@ export function Settings() {
               </select>
             </div>
           )}
+        </div>
+
+        <div className="label">Auros Live</div>
+        <div className="group">
+          <div className="item">
+            <div className="grow">
+              <div className="t">Auto-hide alert popup</div>
+              <div className="s">Dismiss the full-screen alert after 15s — it stays in the crawl</div>
+            </div>
+            <Toggle on={prefs.liveAlertAutoHide} onChange={setLiveAlertAutoHide} />
+          </div>
         </div>
 
         <div className="label">Notifications</div>

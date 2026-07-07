@@ -228,7 +228,8 @@
   0%, 100% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--live-red) 40%, transparent), 0 0 28px color-mix(in srgb, var(--live-red) 14%, transparent); }
   50% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--live-red) 62%, transparent), 0 0 54px color-mix(in srgb, var(--live-red) 28%, transparent); }
 }
-.live-breakin { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: clamp(10px, 1.4vh, 16px); }
+.live-breakin { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: clamp(10px, 1.4vh, 16px); cursor: pointer; }
+.live-breakin-hint { margin-top: clamp(8px, 1.4vh, 16px); font-size: 12.5px; color: var(--text-dim); letter-spacing: 0.3px; }
 .live-breakin-badge {
   display: inline-flex; align-items: center; gap: 8px; align-self: flex-start;
   padding: 7px 15px; border-radius: 9px; color: #fff; font-weight: 800; letter-spacing: 1px;

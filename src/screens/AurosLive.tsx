@@ -11,7 +11,8 @@ import { pollenInfo } from '../api/pollen';
 import { usePrefs, convertTemp } from '../lib/prefs';
 import { CondIcon } from '../components/CondIcon';
 import { severityColor } from '../theme/colors';
-import type { NwsPeriod } from '../api/nws';
+import { playAlertBeeps } from '../lib/eas';
+import type { NwsPeriod, NwsAlert } from '../api/nws';
 import './AurosLive.css';
 
 // Auros Live — a continuous, Weatherscan-style local weather broadcast in the
@@ -137,20 +138,33 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
     .sort((a, b) => (/tornado/i.test(b.event) ? 1 : 0) - (/tornado/i.test(a.event) ? 1 : 0))[0] || null;
   const breakIn = Boolean(breakInAlert);
 
-  // Panel rotation. During a warning the stage keeps cycling (the crawl carries
-  // the alert detail); the severe-alert panel is just inserted into the loop so
-  // it still gets its own full-screen moment each cycle.
-  const activePanels = breakIn ? [{ key: 'alert', title: 'Severe Weather Alert' }, ...PANELS] : PANELS;
+  // Alert popup: a NEW warning pops a full-screen alert box over the stage. It
+  // auto-dismisses after ~15s if the setting is on (then it lives on in the
+  // crawl), or the user can tap it to dismiss; it clears on its own when the
+  // warning expires. The stage keeps cycling once the box is gone.
+  const [boxAlert, setBoxAlert] = useState<NwsAlert | null>(null);
+  const breakId = breakInAlert?.id ?? null;
+  useEffect(() => {
+    if (!breakId) { setBoxAlert(null); return; }
+    setBoxAlert(breakInAlert);
+    if (typeof document === 'undefined' || document.visibilityState === 'visible') playAlertBeeps();
+    if (prefs.liveAlertAutoHide) {
+      const id = setTimeout(() => setBoxAlert(null), 15_000);
+      return () => clearTimeout(id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [breakId]);
+
+  // Panel rotation (paused while the alert box is up).
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
   useEffect(() => {
-    if (paused) return;
+    if (paused || boxAlert) return;
     const id = setInterval(() => setIdx((i) => i + 1), PANEL_MS);
     return () => clearInterval(id);
-  }, [paused]);
-  useEffect(() => { if (breakIn) setIdx(0); }, [breakIn]); // surface the alert first when it fires
+  }, [paused, boxAlert]);
   const advance = () => setIdx((i) => i + 1);
-  const active = activePanels[idx % activePanels.length];
+  const active = PANELS[idx % PANELS.length];
   const panel = active.key;
   const title = active.title;
 
@@ -205,9 +219,9 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
     const a = audioRef.current;
     if (!a) return;
     a.muted = muted;
-    a.volume = breakIn ? 0.08 : 0.5; // duck hard under a break-in — safety over ambiance
+    a.volume = boxAlert ? 0.08 : 0.5; // duck hard while the alert box is up — safety over ambiance
     if (!muted && a.paused && tracks.length) a.play().catch(() => {});
-  }, [muted, breakIn, tracks]);
+  }, [muted, boxAlert, tracks]);
 
   // Esc exits
   useEffect(() => {
@@ -215,6 +229,26 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onExit]);
+
+  // Settings "Test the alert alarm" also previews the Live alert box + beeps.
+  useEffect(() => {
+    const onTest = () => {
+      const test: NwsAlert = {
+        id: `auros-live-test-${Math.floor(Math.random() * 1e9)}`,
+        event: 'Severe Thunderstorm Warning',
+        severity: 'Severe',
+        headline: 'This is a test of the Auros Live alert.',
+        areaDesc: 'Test County — no actual alert is in effect.',
+        instruction: 'This is only a test. No action is needed.',
+        ends: new Date(Date.now() + 1_800_000).toISOString(),
+      };
+      setBoxAlert(test);
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') playAlertBeeps();
+      if (prefs.liveAlertAutoHide) setTimeout(() => setBoxAlert((b) => (b?.id === test.id ? null : b)), 15_000);
+    };
+    window.addEventListener('auros:test-alarm', onTest);
+    return () => window.removeEventListener('auros:test-alarm', onTest);
+  }, [prefs.liveAlertAutoHide]);
 
   const place = shortPlace(selected.name === 'My Location' && w.point?.city ? `${w.point.city}, ${w.point.state}` : selected.name);
   const dateStr = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
@@ -236,9 +270,9 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
     return out;
   }, [w.daily]);
 
-  const sevColor = breakInAlert ? severityColor(breakInAlert.severity, breakInAlert.event) : 'var(--live-red)';
-  const breakUntil = breakInAlert?.ends
-    ? new Date(breakInAlert.ends).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })
+  const sevColor = boxAlert ? severityColor(boxAlert.severity, boxAlert.event) : 'var(--live-red)';
+  const breakUntil = boxAlert?.ends
+    ? new Date(boxAlert.ends).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })
     : '';
 
   // Crawl: the most severe active alert (colored tag + full NWS message), or a
@@ -277,7 +311,7 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
   const tagStyle: CSSProperties | undefined = topAlert ? { background: severityColor(topAlert.severity, topAlert.event) } : undefined;
 
   return (
-    <div className={`live${breakIn ? ' live--alert' : ''}`} role="region" aria-label="Auros Live">
+    <div className={`live${boxAlert || breakIn ? ' live--alert' : ''}`} role="region" aria-label="Auros Live">
       {/* Left "now" rail */}
       <aside className="live-rail">
         <div className="live-brand"><Zap size={18} /> Auros <span className="live-badge">LIVE</span></div>
@@ -318,7 +352,7 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
       {/* Main stage */}
       <section className="live-stage">
         <div className="live-topbar">
-          <span className="live-panel-title">{title}</span>
+          <span className="live-panel-title">{boxAlert ? 'Severe Weather Alert' : title}</span>
           <div className="live-controls">
             <button onClick={() => setPaused((p) => !p)} aria-label={paused ? 'Resume rotation' : 'Pause rotation'}>{paused ? <Play size={15} /> : <Pause size={15} />}</button>
             <button onClick={advance} aria-label="Next panel"><SkipForward size={15} /></button>
@@ -327,14 +361,15 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
           </div>
         </div>
 
-        <div className="live-panel" key={panel}>
-          {panel === 'alert' && breakInAlert ? (
-            <div className="live-breakin" style={{ '--sev': sevColor } as CSSProperties}>
-              <div className="live-breakin-badge"><TriangleAlert size={22} /> {breakInAlert.severity?.toUpperCase() || 'SEVERE'}</div>
-              <div className="live-breakin-event">{breakInAlert.event}</div>
-              {breakInAlert.areaDesc && <div className="live-breakin-area">{breakInAlert.areaDesc}</div>}
+        <div className="live-panel" key={boxAlert ? 'alert' : panel}>
+          {boxAlert ? (
+            <div className="live-breakin" style={{ '--sev': sevColor } as CSSProperties} onClick={() => setBoxAlert(null)} role="button" aria-label="Dismiss alert">
+              <div className="live-breakin-badge"><TriangleAlert size={22} /> {boxAlert.severity?.toUpperCase() || 'SEVERE'}</div>
+              <div className="live-breakin-event">{boxAlert.event}</div>
+              {boxAlert.areaDesc && <div className="live-breakin-area">{boxAlert.areaDesc}</div>}
               {breakUntil && <div className="live-breakin-until">In effect until {breakUntil}</div>}
-              {breakInAlert.instruction && <div className="live-breakin-instr">{breakInAlert.instruction}</div>}
+              {boxAlert.instruction && <div className="live-breakin-instr">{boxAlert.instruction}</div>}
+              <div className="live-breakin-hint">Tap to dismiss{prefs.liveAlertAutoHide ? ' · auto-hides in 15s' : ''} · stays in the crawl below</div>
             </div>
           ) : panel === 'now' ? (
             <div className="live-grid">
@@ -391,9 +426,11 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
           )}
         </div>
 
-        <div className="live-dots">
-          {activePanels.map((p, i) => <span key={p.key} className={`live-dot${i === idx % activePanels.length ? ' on' : ''}`} />)}
-        </div>
+        {!boxAlert && (
+          <div className="live-dots">
+            {PANELS.map((p, i) => <span key={p.key} className={`live-dot${i === idx % PANELS.length ? ' on' : ''}`} />)}
+          </div>
+        )}
       </section>
 
       {/* Bottom crawl */}

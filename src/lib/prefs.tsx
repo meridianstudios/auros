@@ -13,12 +13,13 @@ export interface NotifyPrefs {
   alarmSound: boolean; // play the EAS tone with the on-screen alert box
 }
 export interface QuietHours { enabled: boolean; start: number; end: number } // hours 0-23
-export interface Prefs { units: Units; notify: NotifyPrefs; quiet: QuietHours }
+export interface Prefs { units: Units; notify: NotifyPrefs; quiet: QuietHours; liveAlertAutoHide: boolean }
 
 const DEFAULT: Prefs = {
   units: 'F',
   notify: { tornado: true, severe: true, watches: true, advisories: false, stormHeadsUp: true, alarmSound: true },
   quiet: { enabled: false, start: 22, end: 7 },
+  liveAlertAutoHide: true, // Auros Live: auto-dismiss the alert popup after ~15s (then it stays in the crawl)
 };
 
 const KEY = 'nw.prefs';
@@ -28,6 +29,7 @@ interface PrefsValue {
   setUnits: (u: Units) => void;
   setNotify: (k: keyof NotifyPrefs, v: boolean) => void;
   setQuiet: (q: Partial<QuietHours>) => void;
+  setLiveAlertAutoHide: (v: boolean) => void;
 }
 
 const PrefsContext = createContext<PrefsValue | undefined>(undefined);
@@ -83,6 +85,7 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
     setUnits: (units) => setPrefs((p) => ({ ...p, units })),
     setNotify: (k, v) => setPrefs((p) => ({ ...p, notify: { ...p.notify, [k]: v } })),
     setQuiet: (q) => setPrefs((p) => ({ ...p, quiet: { ...p.quiet, ...q } })),
+    setLiveAlertAutoHide: (v) => setPrefs((p) => ({ ...p, liveAlertAutoHide: v })),
   }), [prefs]);
 
   return <PrefsContext.Provider value={value}>{children}</PrefsContext.Provider>;

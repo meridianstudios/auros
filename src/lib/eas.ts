@@ -84,3 +84,34 @@ export function playEasAttention(durationSec = 8): () => void {
     stopImpl?.();
   };
 }
+
+// Weatherscan-style alert cue: three quick synth beeps — a square wave softened
+// by a lowpass so it reads "calm but slightly distorted" rather than harsh.
+// Fire-and-forget (short), used when an alert pops up in Auros Live.
+export function playAlertBeeps(): void {
+  const c = audioCtx();
+  if (!c) return;
+  const run = () => {
+    if (c.state !== 'running') return;
+    const t0 = c.currentTime + 0.02;
+    const beep = (start: number) => {
+      const o = c.createOscillator();
+      o.type = 'square';
+      o.frequency.value = 988; // calm mid tone (B5)
+      const lp = c.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 2300; // tame the square's harshness → soft, slightly distorted
+      const g = c.createGain();
+      o.connect(lp); lp.connect(g); g.connect(c.destination);
+      const dur = 0.12;
+      g.gain.setValueAtTime(0.0001, start);
+      g.gain.exponentialRampToValueAtTime(0.16, start + 0.012);
+      g.gain.setValueAtTime(0.16, start + dur - 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+      o.start(start); o.stop(start + dur + 0.02);
+    };
+    beep(t0); beep(t0 + 0.2); beep(t0 + 0.4);
+  };
+  if (c.state === 'suspended') c.resume().then(run).catch(() => {});
+  else run();
+}

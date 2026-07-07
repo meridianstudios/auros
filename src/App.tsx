@@ -47,13 +47,12 @@ function Shell() {
   // Auros Live takes over the whole screen (no tab bar). Keep AlertAlarm mounted
   // so a new warning still breaks in with the box + tone even while broadcasting.
   if (view === 'live') {
+    // Auros Live handles its own alert box + Weatherscan beeps, so AlertAlarm is
+    // not mounted here (avoids a duplicate box + tone over the broadcast).
     return (
-      <>
-        <Suspense fallback={<div className="center" style={{ position: 'fixed', inset: 0 }}><div className="spin" /></div>}>
-          <AurosLive onExit={() => setView('home')} />
-        </Suspense>
-        <AlertAlarm />
-      </>
+      <Suspense fallback={<div className="center" style={{ position: 'fixed', inset: 0 }}><div className="spin" /></div>}>
+        <AurosLive onExit={() => setView('home')} />
+      </Suspense>
     );
   }
 
