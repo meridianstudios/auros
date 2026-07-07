@@ -166,6 +166,7 @@
   flex: none; align-self: stretch; display: flex; align-items: center;
   padding: 0 clamp(14px, 1.6vw, 22px);
   font-size: clamp(12px, 1.1vw, 15px); font-weight: 800; letter-spacing: 1.2px; color: #fff;
+  text-transform: uppercase; white-space: nowrap; max-width: 40%; overflow: hidden; text-overflow: ellipsis;
   background: var(--primary);
 }
 .live-crawl.watch .live-crawl-tag { background: var(--warning); color: #1a1200; }
@@ -175,13 +176,12 @@
 .live-crawl-mask { flex: 1; overflow: hidden; }
 .live-crawl-track {
   display: inline-flex; white-space: nowrap; will-change: transform;
-  animation: live-marquee 34s linear infinite;
+  animation: live-marquee 48s linear infinite;
   font-size: clamp(14px, 1.3vw, 18px); font-weight: 600;
-  padding-left: 100%;
 }
-.live-crawl.warn .live-crawl-track { color: color-mix(in srgb, var(--live-red) 55%, var(--text)); animation-duration: 26s; }
-.live-crawl-track span { padding: 0 3vw; }
-@keyframes live-marquee { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+.live-crawl.warn .live-crawl-track { color: color-mix(in srgb, var(--live-red) 55%, var(--text)); animation-duration: 40s; }
+.live-crawl-track span { padding: 0 2.5vw; }
+@keyframes live-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
 /* ---- Responsive: stack on narrow / portrait screens ---- */
 @media (max-width: 760px) {

@@ -147,8 +147,7 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
   const advance = () => setIdx((i) => (i + 1) % PANELS.length);
   const { key: panel, title } = PANELS[idx];
 
-  // Crawl: alerts when present, otherwise a live multi-location NOW readout.
-  const alertsText = w.alerts.map((a) => (a.headline ? a.headline : a.event)).join('        •        ');
+  // Live multi-location NOW readout for the crawl (Open-Meteo current per saved place).
   const [savedNow, setSavedNow] = useState<{ name: string; temp: number | null; label: string }[]>([]);
   const [nowTick, setNowTick] = useState(0);
   useEffect(() => {
@@ -170,16 +169,6 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
     ).then((arr) => { if (live) setSavedNow(arr.filter(Boolean) as { name: string; temp: number | null; label: string }[]); });
     return () => { live = false; };
   }, [locations, nowTick]);
-
-  const nowText = savedNow.length
-    ? savedNow.map((s) => `${s.name}   ${s.temp != null ? `${convertTemp(s.temp, u)}°` : '--'}${s.label ? `  ${s.label}` : ''}`).join('        •        ')
-    : w.current
-    ? `${shortPlace(selected.name)}   ${t(w.current.temperature)}   ${w.current.shortForecast}`
-    : `Auros Live — ${shortPlace(selected.name)}`;
-
-  const crawlTag = breakIn ? 'WARNING' : w.alerts.length ? 'ALERTS' : 'NOW';
-  const crawlClass = breakIn ? 'warn' : w.alerts.length ? 'watch' : '';
-  const crawlText = w.alerts.length ? alertsText : nowText;
 
   // Background music (from public/live-music/tracks.json)
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -244,6 +233,40 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
   const breakUntil = breakInAlert?.ends
     ? new Date(breakInAlert.ends).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })
     : '';
+
+  // Crawl: the most severe active alert (colored tag + full NWS message), or a
+  // rich rotating NOW readout — conditions per saved place, extra details, and a
+  // "brought to you by Meridian" segment.
+  const flat = (s?: string) => (s || '').replace(/\s+/g, ' ').trim();
+  const rankEvent = (e: string) => {
+    const s = e.toLowerCase();
+    if (s.includes('tornado warning')) return 6;
+    if (s.includes('flash flood warning') || s.includes('severe thunderstorm warning')) return 5;
+    if (s.includes('warning')) return 4;
+    if (s.includes('watch')) return 3;
+    if (s.includes('advisory')) return 2;
+    return 1;
+  };
+  const topAlert = [...w.alerts].sort((a, b) => rankEvent(b.event) - rankEvent(a.event))[0] || null;
+  const nowSegs: string[] = [];
+  savedNow.forEach((s) => nowSegs.push(`${s.name}   ${s.temp != null ? `${convertTemp(s.temp, u)}°` : '--'}${s.label ? `  ${s.label}` : ''}`));
+  if (c?.feelsLikeF != null) nowSegs.push(`${place}: Feels like ${t(c.feelsLikeF)}`);
+  if (days[0]) nowSegs.push(`Today ${t(days[0].hi)}${days[0].lo != null ? `  ·  Tonight ${t(days[0].lo)}` : ''}`);
+  if (c?.humidity != null) nowSegs.push(`Humidity ${c.humidity}%`);
+  if (cur) nowSegs.push(`Wind ${cur.windDirection} ${cur.windSpeed}`);
+  if (c?.uv != null) nowSegs.push(`UV Index ${Math.round(c.uv)}  ·  ${uvInfo(c.uv)}`);
+  if (c?.aqi != null) nowSegs.push(`Air Quality ${c.aqi}  ·  ${aqiInfo(c.aqi).label}`);
+  if (pollen) nowSegs.push(`Pollen ${pollenInfo(pollen.index).label}${pollen.triggers.length ? `  ·  ${pollen.triggers.join(', ')}` : ''}`);
+  if (c?.sunrise && c?.sunset) nowSegs.push(`Sunrise ${fmtClockTime(c.sunrise)}  ·  Sunset ${fmtClockTime(c.sunset)}`);
+  nowSegs.push('Auros severe weather awareness  ·  brought to you by Meridian');
+  const nowText = nowSegs.join('          •          ') || `Auros Live — ${place}`;
+  const alertText = topAlert
+    ? flat(`${topAlert.event} for ${topAlert.areaDesc}.  ${topAlert.description || topAlert.headline || ''}  ${topAlert.instruction || ''}`)
+    : '';
+  const crawlText = topAlert ? alertText : nowText;
+  const crawlTag = topAlert ? topAlert.event : 'NOW';
+  const crawlClass = topAlert ? (/warning/i.test(topAlert.event) ? 'warn' : 'watch') : '';
+  const tagStyle: CSSProperties | undefined = topAlert ? { background: severityColor(topAlert.severity, topAlert.event) } : undefined;
 
   return (
     <div className={`live${breakIn ? ' live--alert' : ''}`} role="region" aria-label="Auros Live">
@@ -354,7 +377,7 @@ export function AurosLive({ onExit }: { onExit: () => void }) {
 
       {/* Bottom crawl */}
       <div className={`live-crawl ${crawlClass}`}>
-        <span className="live-crawl-tag">{crawlTag}</span>
+        <span className="live-crawl-tag" style={tagStyle}>{crawlTag}</span>
         <div className="live-crawl-mask">
           <div className="live-crawl-track">
             <span>{crawlText}</span>
