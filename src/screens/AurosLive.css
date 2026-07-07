@@ -6,6 +6,11 @@
   inset: 0;
   z-index: 60;
   --live-red: #C1121F; /* deeper broadcast red for the LIVE badge + warnings */
+  /* Auros Live is always dark (a full-screen broadcast). Pin the dark palette so
+     it stays legible even when the app itself is in light mode. */
+  --bg: #0A0C12; --surface: #13161F; --surface-alt: #1C1F2B; --border: rgba(255, 255, 255, 0.07);
+  --text: #F4F6FB; --text-muted: #8B91A3; --text-dim: #5A6072;
+  --primary: #5B8DEF; --accent: #5B8DEF; --success: #4ADE80; --warning: #FBBF24; --danger: #FB7185; --shadow: rgba(0, 0, 0, 0.5);
   display: grid;
   grid-template-columns: clamp(240px, 24vw, 320px) 1fr;
   grid-template-rows: 1fr clamp(28px, 3.8vh, 40px);
