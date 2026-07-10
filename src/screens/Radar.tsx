@@ -310,7 +310,7 @@ export function Radar() {
   // loop is smooth instead of flashing a fresh tile fetch each tick.
   useEffect(() => {
     if (product !== 'ref') return;
-    radarFramesRef.current.forEach((l, i) => l.setOpacity(i === idx ? 0.72 : 0));
+    radarFramesRef.current.forEach((l, i) => l.setOpacity(i === idx ? 0.9 : 0));
   }, [product, idx]);
 
   useEffect(() => {

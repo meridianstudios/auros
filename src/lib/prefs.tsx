@@ -4,6 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import { db } from './firebase';
 
 export type Units = 'F' | 'C';
+// Visual style for the Auros Live broadcast. 'modern' = the default dark Auros
+// look; 'aero' = glossy Frutiger Aero; 'retro' = 90s Weather Channel (WeatherStar
+// 4000); 'wscan' = 2005–2022 Weatherscan LDL. More can be added.
+export type LiveStyle = 'modern' | 'aero' | 'retro' | 'wscan';
 export interface NotifyPrefs {
   tornado: boolean;
   severe: boolean; // severe t-storm + flash flood warnings
@@ -13,13 +17,16 @@ export interface NotifyPrefs {
   alarmSound: boolean; // play the EAS tone with the on-screen alert box
 }
 export interface QuietHours { enabled: boolean; start: number; end: number } // hours 0-23
-export interface Prefs { units: Units; notify: NotifyPrefs; quiet: QuietHours; liveAlertAutoHide: boolean }
+export interface Prefs { units: Units; notify: NotifyPrefs; quiet: QuietHours; liveAlertAutoHide: boolean; liveStyle: LiveStyle; liveVoice: boolean; liveBigText: boolean }
 
 const DEFAULT: Prefs = {
   units: 'F',
   notify: { tornado: true, severe: true, watches: true, advisories: false, stormHeadsUp: true, alarmSound: true },
   quiet: { enabled: false, start: 22, end: 7 },
   liveAlertAutoHide: true, // Auros Live: auto-dismiss the alert popup after ~15s (then it stays in the crawl)
+  liveStyle: 'modern', // Auros Live broadcast look
+  liveVoice: true, // Auros Live: narrate each panel aloud (era-matched TTS voice)
+  liveBigText: true, // Auros Live (Weatherscan): larger across-the-room typography
 };
 
 const KEY = 'nw.prefs';
@@ -30,6 +37,9 @@ interface PrefsValue {
   setNotify: (k: keyof NotifyPrefs, v: boolean) => void;
   setQuiet: (q: Partial<QuietHours>) => void;
   setLiveAlertAutoHide: (v: boolean) => void;
+  setLiveStyle: (s: LiveStyle) => void;
+  setLiveVoice: (v: boolean) => void;
+  setLiveBigText: (v: boolean) => void;
 }
 
 const PrefsContext = createContext<PrefsValue | undefined>(undefined);
@@ -86,6 +96,9 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
     setNotify: (k, v) => setPrefs((p) => ({ ...p, notify: { ...p.notify, [k]: v } })),
     setQuiet: (q) => setPrefs((p) => ({ ...p, quiet: { ...p.quiet, ...q } })),
     setLiveAlertAutoHide: (v) => setPrefs((p) => ({ ...p, liveAlertAutoHide: v })),
+    setLiveStyle: (liveStyle) => setPrefs((p) => ({ ...p, liveStyle })),
+    setLiveVoice: (v) => setPrefs((p) => ({ ...p, liveVoice: v })),
+    setLiveBigText: (v) => setPrefs((p) => ({ ...p, liveBigText: v })),
   }), [prefs]);
 
   return <PrefsContext.Provider value={value}>{children}</PrefsContext.Provider>;

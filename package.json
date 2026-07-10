@@ -1,11 +1,13 @@
 {
   "name": "auros",
   "private": true,
-  "version": "1.0.14",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "strip-music": "node scripts/strip-live-music.mjs",
+    "build:native": "npm run build && npm run strip-music",
     "lint": "eslint .",
     "preview": "vite preview",
     "tauri": "tauri"

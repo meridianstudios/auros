@@ -49,9 +49,28 @@ function nexradL3BrowserFix(): Plugin {
   };
 }
 
+// Vite's dev dependency pre-bundler runs esbuild, which does NOT run the Vite
+// `transform` plugin above. So the same rewrite has to be applied as an esbuild
+// onLoad plugin during optimizeDeps, or the dev server ships the Node-only
+// fs.readdirSync(__dirname) auto-loader and every Level-3 decode throws.
+// (Production `vite build` uses Rollup, where the transform plugin covers it.)
+const nexradL3EsbuildFix = {
+  name: 'nexrad-l3-esbuild-fix',
+  setup(build: {
+    onLoad(
+      opts: { filter: RegExp },
+      cb: () => { contents: string; loader: 'js' }
+    ): void;
+  }) {
+    build.onLoad({ filter: /nexrad-level-3-data[\\/]src[\\/]products[\\/]index\.js$/ }, () => ({ contents: NEXRAD_PRODUCTS, loader: 'js' }));
+    build.onLoad({ filter: /nexrad-level-3-data[\\/]src[\\/]packets[\\/]index\.js$/ }, () => ({ contents: NEXRAD_PACKETS, loader: 'js' }));
+  },
+};
+
 // https://vite.dev/config/
 export default defineConfig({
   define: { __IS_NATIVE__: JSON.stringify(isTauriBuild), __APP_VERSION__: JSON.stringify(appVersion) },
+  optimizeDeps: { esbuildOptions: { plugins: [nexradL3EsbuildFix] } },
   plugins: [
     nexradL3BrowserFix(),
     react(),

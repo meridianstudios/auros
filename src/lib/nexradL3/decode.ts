@@ -1,10 +1,14 @@
 import { Buffer } from 'buffer';
 
-// The NIDS decoder + seek-bzip expect a global Buffer (Node API). Provide it for
-// the browser before the decoder runs.
-if (typeof (globalThis as { Buffer?: unknown }).Buffer === 'undefined') {
-  (globalThis as { Buffer?: unknown }).Buffer = Buffer;
-}
+// The NIDS decoder expects Node globals in the browser. Provide Buffer, and stub
+// __dirname/__filename: the package's product registry references __dirname at
+// module load (to locate product files), which throws "__dirname is not defined"
+// in the browser and breaks EVERY Level-3 decode. Must be set before the decoder
+// is dynamically imported below.
+const nodeGlobals = globalThis as { Buffer?: unknown; __dirname?: string; __filename?: string };
+if (typeof nodeGlobals.Buffer === 'undefined') nodeGlobals.Buffer = Buffer;
+if (typeof nodeGlobals.__dirname === 'undefined') nodeGlobals.__dirname = '/';
+if (typeof nodeGlobals.__filename === 'undefined') nodeGlobals.__filename = '/index.js';
 
 export interface L3Radial {
   startAngle: number; // degrees clockwise from true north
@@ -80,20 +84,18 @@ async function getDecoder() {
       add('159', ['N0X', 'N1X', 'N2X', 'N3X'], 'Differential Reflectivity', dualPol);
       add('163', ['N0K', 'N1K', 'N2K', 'N3K'], 'Specific Differential Phase', dualPol);
 
-      // Storm-relative velocity (N0S, code 56). The library ships a parser, but it
-      // reads the storm-motion fields and never reads compressionMethod /
-      // uncompressedProductSize, so the bzip-compressed symbology is never
-      // decompressed and decoding fails. Override its product description to read
-      // those at the standard positions (same as every other digital product).
-      // Bins are run-length level indices (0–15), coloured by srvColor, so the
-      // plot scale is nominal.
+      // Storm-relative velocity (N0S, code 56). Unlike the super-res digital
+      // products, N0S is NOT product-compressed: halfwords 51-52 hold storm-motion
+      // fields (average speed/direction), not compressionMethod/size. Reading them
+      // as a compression header yields a nonzero value, so the decoder tries to
+      // bunzip run-length data and throws "Not bzip data: bad magic". We only need
+      // elevation + a nominal plot scale; the bins are run-length level indices
+      // (0-15) coloured by srvColor, and the symbology stays uncompressed.
       const srm = (data: Buffer | Uint8Array) => {
         const b = Buffer.isBuffer(data) ? data : Buffer.from(data);
         return {
           elevationAngle: b.readInt16BE(0) / 10,
           plot: { minimumDataValue: 0, dataIncrement: 1, dataLevels: 16 },
-          compressionMethod: b.readInt16BE(42),
-          uncompressedProductSize: (b.readUInt16BE(44) << 16) + b.readUInt16BE(46),
         };
       };
       const p56 = reg.products['56'] as { productDescription?: unknown } | undefined;

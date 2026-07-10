@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { Moon, Sun, Bell, ExternalLink, Siren, Download, Trash2, LogOut } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Moon, Sun, Bell, ExternalLink, Siren, Download, Trash2, LogOut, Music } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
 import { usePrefs, type NotifyPrefs } from '../lib/prefs';
 import { notify } from '../lib/notify';
 import { isNative } from '../lib/platform';
+import { musicCacheBytes, clearMusicCache } from '../lib/musicCache';
 import { useAuth } from '../context/AuthContext';
 
 function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
@@ -27,10 +28,22 @@ const NOTIFY_ROWS: { key: keyof NotifyPrefs; label: string; sub: string }[] = [
 
 export function Settings() {
   const { scheme, setScheme } = useTheme();
-  const { prefs, setUnits, setNotify, setQuiet, setLiveAlertAutoHide } = usePrefs();
+  const { prefs, setUnits, setNotify, setQuiet, setLiveAlertAutoHide, setLiveStyle, setLiveVoice } = usePrefs();
   const { ready, user, logout, deleteAccount } = useAuth();
   const [msg, setMsg] = useState<string | null>(null);
   const [acctMsg, setAcctMsg] = useState<string | null>(null);
+  const [musicBytes, setMusicBytes] = useState<number | null>(null);
+  const [clearing, setClearing] = useState(false);
+
+  useEffect(() => { musicCacheBytes().then(setMusicBytes); }, []);
+
+  const clearMusic = async () => {
+    setClearing(true);
+    await clearMusicCache();
+    setMusicBytes(0);
+    setClearing(false);
+  };
+  const fmtBytes = (b: number) => (b < 1024 * 1024 ? `${Math.max(1, Math.round(b / 1024))} KB` : `${(b / 1024 / 1024).toFixed(1)} MB`);
 
   const handleDelete = async () => {
     if (!window.confirm('Permanently delete your Auros account and everything synced to it? This cannot be undone.')) return;
@@ -107,13 +120,47 @@ export function Settings() {
         </div>
 
         <div className="label">Auros Live</div>
+        <div className="seg" style={{ marginBottom: 6, flexWrap: 'wrap' }}>
+          <button className={prefs.liveStyle === 'modern' ? 'on' : ''} onClick={() => setLiveStyle('modern')}>Modern</button>
+          <button className={prefs.liveStyle === 'aero' ? 'on' : ''} onClick={() => setLiveStyle('aero')}>Frutiger Aero</button>
+          <button className={prefs.liveStyle === 'retro' ? 'on' : ''} onClick={() => setLiveStyle('retro')}>90s Classic</button>
+          <button className={prefs.liveStyle === 'wscan' ? 'on' : ''} onClick={() => setLiveStyle('wscan')}>Weatherscan</button>
+        </div>
+        <div className="dim" style={{ fontSize: 12.5, margin: '0 2px 10px', lineHeight: 1.5 }}>The broadcast look. More styles coming.</div>
         <div className="group">
+          <div className="item">
+            <div className="grow">
+              <div className="t">Forecast narration</div>
+              <div className="s">The Frutiger Aero and Weatherscan looks read each panel aloud in a period voice, ducking the music. Toggle it live from the top bar too.</div>
+            </div>
+            <Toggle on={prefs.liveVoice} onChange={setLiveVoice} />
+          </div>
           <div className="item">
             <div className="grow">
               <div className="t">Auto-hide alert popup</div>
               <div className="s">Dismiss the full-screen alert after 15s — it stays in the crawl</div>
             </div>
             <Toggle on={prefs.liveAlertAutoHide} onChange={setLiveAlertAutoHide} />
+          </div>
+          <div className="item">
+            <div className="grow">
+              <div className="t"><Music size={14} style={{ verticalAlign: '-2px', marginRight: 6, opacity: 0.7 }} />Downloaded music</div>
+              <div className="s">
+                {musicBytes == null
+                  ? 'Checking…'
+                  : musicBytes === 0
+                    ? 'No tracks saved yet — they download as they play, then reuse'
+                    : `${fmtBytes(musicBytes)} of Auros Live music saved on this device`}
+              </div>
+            </div>
+            <button
+              className="btn btn-ghost"
+              style={{ width: 'auto', flex: 'none', padding: '8px 14px' }}
+              disabled={!musicBytes || clearing}
+              onClick={clearMusic}
+            >
+              <Trash2 size={15} /> {clearing ? 'Clearing…' : 'Clear'}
+            </button>
           </div>
         </div>
 

@@ -1,6 +1,15 @@
 /* Auros Live — full-screen broadcast mode. Weatherscan layout (left "now" rail +
    rotating stage + bottom crawl) reimagined in the dark Auros aesthetic. */
 
+/* Optional 90s "Star4000" font for the retro style — drop the free fan-made
+   font into public/fonts/ (see public/fonts/README.md). If absent, the retro
+   style falls back to a system monospace, so nothing breaks. */
+@font-face {
+  font-family: 'Star4000';
+  src: url('/fonts/Star4000.woff2') format('woff2'), url('/fonts/Star4000.ttf') format('truetype');
+  font-display: swap;
+}
+
 .live {
   position: fixed;
   inset: 0;
@@ -23,6 +32,25 @@
     linear-gradient(160deg, #0b0e17, #070910 70%);
   overflow: hidden;
 }
+
+/* Phone: dark letterbox behind the scaled-down landscape broadcast, and the
+   portrait "rotate your phone" prompt. (Tablet/desktop never hit these.) */
+.live-letterbox { position: fixed; inset: 0; z-index: 59; background: #070910; }
+.live-rotate {
+  position: fixed; inset: 0; z-index: 60; display: grid; place-items: center;
+  padding: 24px; text-align: center; color: #F4F6FB;
+  background: radial-gradient(120% 90% at 82% -12%, rgba(110, 139, 255, 0.16), transparent 55%), linear-gradient(160deg, #0b0e17, #070910 70%);
+}
+.live-rotate-inner { max-width: 340px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.live-rotate svg { color: #6E8BFF; animation: live-rotate-hint 2.8s ease-in-out infinite; }
+@keyframes live-rotate-hint { 0%, 55%, 100% { transform: rotate(0); } 76%, 92% { transform: rotate(90deg); } }
+.live-rotate-title { font-size: 22px; font-weight: 800; letter-spacing: -0.3px; }
+.live-rotate-sub { font-size: 14px; color: #8B91A3; line-height: 1.55; }
+.live-rotate button {
+  margin-top: 6px; padding: 10px 24px; border-radius: 10px; cursor: pointer;
+  background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.16); color: #F4F6FB; font-weight: 600; font-size: 14px;
+}
+.live-rotate button:hover { background: rgba(255, 255, 255, 0.14); }
 
 /* Photo backdrop — town images behind the frosted panels; when there are none
    the plain dark background above shows through. */
@@ -48,6 +76,13 @@
   transition: color 0.15s, background 0.15s;
 }
 .live-controls button:hover { color: var(--text); background: rgba(255, 255, 255, 0.1); }
+/* A control toggled off (e.g. narration muted) reads as dimmed/struck-through. */
+.live-controls button.off { opacity: 0.4; }
+.live-controls button.off::after {
+  content: ''; position: absolute; left: 4px; right: 4px; top: 50%;
+  height: 1.5px; background: currentColor; transform: rotate(-20deg);
+}
+.live-controls button { position: relative; }
 
 /* ---- Left "now" rail ---- */
 .live-rail {
@@ -69,8 +104,7 @@
   margin-left: 2px; font-size: 10px; font-weight: 800; letter-spacing: 1px;
   padding: 3px 7px; border-radius: 6px; color: #fff;
   background: var(--live-red);
-  position: relative; top: -1px;
-  animation: live-pulse 2.2s ease-in-out infinite;
+  position: relative; top: 1px;
 }
 @keyframes live-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
 
@@ -100,7 +134,30 @@
 .live-now-cond { font-size: clamp(15px, 1.3vw, 19px); color: var(--text); margin-top: 6px; }
 .live-now-feels { font-size: clamp(12px, 1vw, 14px); color: var(--text-muted); margin-top: 3px; }
 
-.live-rail-foot { margin-top: clamp(16px, 2.4vh, 26px); font-size: 12px; color: var(--text-dim); letter-spacing: 0.3px; }
+/* Now playing bar */
+.live-np {
+  margin-top: clamp(14px, 2vh, 22px);
+  display: flex; align-items: center; gap: 9px; min-width: 0;
+  padding: 9px 11px; border-radius: 11px;
+  background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border);
+}
+.live-np > svg { color: var(--primary); flex: none; }
+.live-np.muted > svg { color: var(--text-dim); }
+.live-np-body { min-width: 0; flex: 1; }
+.live-np-label { font-size: 9.5px; font-weight: 800; letter-spacing: 1.6px; color: var(--text-dim); }
+.live-np-title { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.live-np.muted .live-np-title { color: var(--text-muted); }
+.live-np-eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 15px; flex: none; }
+.live-np-eq i { width: 3px; height: 100%; border-radius: 2px; background: var(--primary); transform-origin: bottom; animation: live-eq 0.9s ease-in-out infinite; }
+.live-np-eq i:nth-child(1) { animation-delay: -0.2s; }
+.live-np-eq i:nth-child(2) { animation-delay: -0.5s; }
+.live-np-eq i:nth-child(3) { animation-delay: -0.35s; }
+@keyframes live-eq { 0%, 100% { transform: scaleY(0.35); } 50% { transform: scaleY(1); } }
+
+.live-rail-foot { margin-top: clamp(16px, 2.4vh, 26px); display: flex; flex-direction: column; gap: 1px; }
+.live-foot-mark { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 15px; letter-spacing: -0.2px; color: var(--text); }
+.live-foot-mark svg { color: var(--primary); }
+.live-foot-sub { font-size: 11px; color: var(--text-dim); letter-spacing: 0.4px; }
 
 /* ---- Main stage ---- */
 .live-stage {
@@ -203,15 +260,16 @@
 .live-crawl-track span { padding: 0 2.5vw; }
 @keyframes live-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
-/* ---- Responsive: stack on narrow / portrait screens ---- */
-@media (max-width: 760px) {
+/* ---- Responsive: stack on narrow PORTRAIT screens (phone landscape is handled
+   by the scaled-canvas path in the component, so it must not stack here) ---- */
+@media (max-width: 760px) and (orientation: portrait) {
   .live { grid-template-columns: 1fr; grid-template-rows: auto 1fr clamp(44px, 7vh, 60px); gap: 10px; padding: 10px; }
   .live-rail { grid-row: 1; grid-column: 1; flex-direction: row; align-items: center; flex-wrap: wrap; gap: 10px 16px; padding: 14px 16px; }
   .live-rail .live-clock { margin-top: 0; }
   .live-now { margin-top: 0; margin-left: auto; }
   .live-now-main { justify-content: flex-end; }
   .live-now-temp { font-size: 46px; }
-  .live-rail-foot { display: none; }
+  .live-rail-foot, .live-np, .live-past3 { display: none; }
   .live-stage { grid-row: 2; grid-column: 1; }
   .live-crawl { grid-row: 3; grid-column: 1; }
   .live-grid { grid-template-columns: repeat(2, 1fr); }
@@ -225,6 +283,7 @@
 @media (prefers-reduced-motion: reduce) {
   .live-panel, .live-badge, .live-crawl.warn { animation: none; }
   .live-crawl-track { animation-duration: 60s; }
+  .live-np-eq i { animation: none; transform: scaleY(0.6); }
 }
 
 /* ---- Live radar panel ---- */
@@ -256,3 +315,670 @@
   .live-stat, .live-hour, .live-day { animation: none; }
   .live--alert .live-stage { animation: none; }
 }
+
+/* ============================================================================
+   STYLE: Frutiger Aero — glossy blue glass, navy-on-white panels, classic
+   Weatherscan look. Segoe UI is Microsoft's Frutiger derivative (the real
+   Frutiger isn't web-embeddable), so it's the truest free match, especially on
+   Windows; it degrades to Helvetica Neue / system humanist sans elsewhere.
+   Scoped to [data-style="aero"] so the default 'modern' look is untouched.
+   ============================================================================ */
+.live[data-style='aero'] {
+  --text: #103a7d;            /* navy body text on the light panels */
+  --text-muted: #3f629e;
+  --text-dim: #6a83b3;
+  --primary: #1f5fb0;
+  --border: rgba(255, 255, 255, 0.55);
+  --shadow: rgba(12, 40, 100, 0.3);
+  font-family: 'Segoe UI', 'Frutiger', 'Frutiger Linotype', 'Myriad Pro', 'Helvetica Neue', Arial, sans-serif;
+  /* Happy blue sky with a soft (not blown-out) glossy sheen */
+  background:
+    radial-gradient(120% 70% at 50% -16%, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0) 50%),
+    linear-gradient(180deg, #cfe2f7 0%, #a6cbf1 28%, #6ba6e8 64%, #4785dc 100%);
+}
+/* Aero uses real gloss, not the modern frosted blur; the plain blue is the star,
+   so the town-photo backdrop steps aside. */
+.live[data-style='aero'] .live-bg,
+.live[data-style='aero'] .live-scrim { display: none; }
+
+/* ---- Left rail: dark glossy-blue panel, white text ---- */
+.live[data-style='aero'] .live-rail {
+  color: #fff;
+  --text: #ffffff;
+  --text-muted: rgba(255, 255, 255, 0.85);
+  --text-dim: rgba(255, 255, 255, 0.62);
+  --primary: #dcecff;        /* light accent (icons/location) reads on the dark rail */
+  --border: rgba(255, 255, 255, 0.4);
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.04) 38%, rgba(255, 255, 255, 0) 60%),
+    linear-gradient(180deg, #4f8bd6 0%, #2c62b4 56%, #234d94 100%);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.5), 0 8px 22px rgba(12, 40, 100, 0.32);
+  backdrop-filter: none;
+  text-shadow: 0 1px 2px rgba(6, 24, 66, 0.45);
+}
+.live[data-style='aero'] .live-now-temp { font-weight: 300; letter-spacing: -1px; }
+.live[data-style='aero'] .live-np {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.08));
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+.live[data-style='aero'] .live-loc-menu {
+  background: linear-gradient(180deg, #ffffff, #e6effb);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 14px 36px rgba(12, 40, 100, 0.35);
+  backdrop-filter: none;
+}
+.live[data-style='aero'] .live-loc-opt { color: #103a7d; }
+.live[data-style='aero'] .live-loc-opt:hover { background: rgba(31, 95, 176, 0.12); }
+.live[data-style='aero'] .live-loc-opt.on { color: #1f5fb0; }
+
+/* ---- Stage: light glossy panel, navy text ---- */
+.live[data-style='aero'] .live-stage {
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.2) 24%, rgba(255, 255, 255, 0.08) 60%, rgba(255, 255, 255, 0.22)),
+    linear-gradient(180deg, rgba(226, 239, 253, 0.92), rgba(200, 222, 246, 0.85));
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.7), 0 8px 22px rgba(12, 40, 100, 0.28);
+  backdrop-filter: none;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+/* Panel title becomes a glossy dark-blue header bar (like each Weatherscan panel) */
+.live[data-style='aero'] .live-panel-title {
+  flex: 1;
+  min-width: 0;
+  color: #fff;
+  padding: 7px 16px;
+  border-radius: 9px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  /* Topic bar that fades out to the right, like the reference "Right Now" bar. */
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 60%),
+    linear-gradient(90deg, #245ba6 0%, #3f7fd0 34%, rgba(63, 127, 208, 0.14) 90%, rgba(63, 127, 208, 0) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  text-shadow: 0 1px 2px rgba(6, 24, 66, 0.5);
+}
+.live[data-style='aero'] .live-panel-title::after { display: none; }
+/* Glossy control buttons */
+.live[data-style='aero'] .live-controls button {
+  color: #1f5fb0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.55));
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  backdrop-filter: none;
+}
+.live[data-style='aero'] .live-controls button:hover { color: #103a7d; background: #fff; }
+/* Content tiles: glossy near-white cards */
+.live[data-style='aero'] .live-stat,
+.live[data-style='aero'] .live-hour,
+.live[data-style='aero'] .live-day {
+  border-radius: 15px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.62));
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 1), inset 0 -7px 14px rgba(255, 255, 255, 0.55), 0 3px 8px rgba(20, 60, 130, 0.18);
+}
+.live[data-style='aero'] .live-stat-v,
+.live[data-style='aero'] .live-hour-temp,
+.live[data-style='aero'] .live-day-hi { font-weight: 600; }
+
+/* ---- Bottom crawl: light glossy strip, navy text ---- */
+.live[data-style='aero'] .live-crawl {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(220, 234, 250, 0.85));
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 4px 12px rgba(12, 40, 100, 0.2);
+  backdrop-filter: none;
+}
+.live[data-style='aero'] .live-crawl-track { color: #103a7d; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5); }
+.live[data-style='aero'] .live-crawl-tag {
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  background: linear-gradient(180deg, #3f7fd0, #23589f);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  text-shadow: 0 1px 2px rgba(6, 24, 66, 0.45);
+}
+
+/* Aero: smaller, tidier type so it breathes like the reference, and card content
+   clustered (centered) instead of stretched top-to-bottom. */
+.live[data-style='aero'] .live-panel-title { font-size: clamp(17px, 1.7vw, 24px); }
+.live[data-style='aero'] .live-time { font-size: clamp(21px, 2vw, 28px); }
+.live[data-style='aero'] .live-now-temp { font-size: clamp(40px, 4.4vw, 58px); }
+.live[data-style='aero'] .live-now-cond { font-size: clamp(14px, 1.15vw, 17px); }
+.live[data-style='aero'] .live-stat-v { font-size: clamp(18px, 1.55vw, 24px); }
+.live[data-style='aero'] .live-hour-temp { font-size: clamp(16px, 1.35vw, 20px); }
+.live[data-style='aero'] .live-day-name { font-size: clamp(13px, 1.2vw, 17px); }
+.live[data-style='aero'] .live-day-hi { font-size: clamp(18px, 1.55vw, 24px); margin-top: 6px; }
+.live[data-style='aero'] .live-day-lo { font-size: clamp(13px, 1.1vw, 16px); }
+.live[data-style='aero'] .live-day { justify-content: center; gap: 6px; }
+/* Give the Aero forecast icons a bit more presence so they read at a glance. */
+.live[data-style='aero'] .live-hour-ic svg,
+.live[data-style='aero'] .live-day-ic svg { width: clamp(38px, 3.8vw, 58px); height: auto; }
+/* Compact forecast row: center the whole row vertically in the stage, but keep
+   every card the SAME height (align-items: stretch) so storm cards with extra
+   text stay aligned with the shorter sunny ones instead of drifting out of line. */
+.live[data-style='aero'] .live-hourly,
+.live[data-style='aero'] .live-ext { align-self: center; align-items: stretch; }
+
+/* Aero rail: a designed separator, a panel menu (blue bars, current in gold),
+   the NOW readout below it, and the Auros logo pinned at the bottom. */
+.live[data-style='aero'] .live-sep {
+  height: 3px;
+  margin: 14px 0 2px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0.16) 62%, rgba(255, 255, 255, 0));
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+.live[data-style='aero'] .live-nav { display: flex; flex-direction: column; gap: 5px; margin-top: 16px; }
+.live[data-style='aero'] .live-nav-item {
+  text-align: left;
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: clamp(12.5px, 1.05vw, 15px);
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  text-shadow: 0 1px 2px rgba(6, 24, 66, 0.4);
+  transition: background 0.15s;
+}
+.live[data-style='aero'] .live-nav-item:hover { background: linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.1)); }
+.live[data-style='aero'] .live-nav-item.on {
+  color: #5c3f00;
+  font-weight: 700;
+  background: linear-gradient(180deg, #ffe79a 0%, #f2b23e 100%);
+  border-color: rgba(255, 255, 255, 0.85);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 2px 6px rgba(120, 80, 0, 0.28);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+/* NOW readout sits right under the menu; the logo is pinned to the bottom. */
+.live[data-style='aero'] .live-now { margin-top: 16px; }
+.live[data-style='aero'] .live-rail-foot { margin-top: auto; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.18); }
+
+/* ============================================================================
+   STYLE: 90s Weather Channel (WeatherStar 4000) — deep navy with a warm orange
+   glow up top, royal-blue panels with light borders, yellow blocky headers, and
+   white monospace text. Crisp (no CRT distortion). Scoped to [data-style='retro'].
+   ============================================================================ */
+.live[data-style='retro'] {
+  --text: #eef1ff;
+  --text-muted: #bcc6f2;
+  --text-dim: #8f9ad8;
+  --primary: #ffd21a;                /* yellow accent */
+  --border: rgba(150, 175, 255, 0.4);
+  --shadow: rgba(0, 0, 8, 0.55);
+  --retro-yellow: #ffd21a;
+  --retro-cyan: #7fd6ff;
+  font-family: 'Star4000', 'Consolas', ui-monospace, 'Courier New', monospace;
+  letter-spacing: 0.2px;
+  /* Royal-navy field with a warm orange glow across the top + corners. */
+  background:
+    radial-gradient(72% 44% at 10% 3%, rgba(246, 150, 26, 0.4), transparent 60%),
+    radial-gradient(72% 44% at 90% 3%, rgba(246, 150, 26, 0.4), transparent 60%),
+    linear-gradient(180deg, rgba(240, 140, 24, 0.22) 0%, rgba(120, 70, 20, 0.05) 11%, rgba(16, 26, 74, 0) 24%),
+    linear-gradient(180deg, #1c2b78 0%, #16225f 48%, #0f1642 100%);
+}
+.live[data-style='retro'] .live-bg,
+.live[data-style='retro'] .live-scrim { display: none; }
+
+/* ---- Rail: royal-blue panel, boxed logo, yellow-highlighted menu ---- */
+.live[data-style='retro'] .live-rail {
+  --primary: var(--retro-yellow);
+  color: var(--text);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(244, 150, 30, 0.22), rgba(244, 150, 30, 0) 20%),
+    linear-gradient(180deg, #303a92, #202a72);
+  border: 1px solid var(--border);
+  box-shadow: inset 0 0 0 1px rgba(150, 175, 255, 0.12);
+  backdrop-filter: none;
+  text-shadow: 1px 1px 0 rgba(0, 0, 20, 0.45);
+}
+.live[data-style='retro'] .live-brand {
+  align-self: flex-start;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #3a47b4, #26308c);
+  border: 1px solid rgba(165, 190, 255, 0.55);
+}
+.live[data-style='retro'] .live-badge { display: none; }
+.live[data-style='retro'] .live-sep {
+  height: 2px; margin: 12px 0 2px; border-radius: 2px;
+  background: linear-gradient(90deg, #f4a020, rgba(244, 160, 32, 0.08));
+}
+.live[data-style='retro'] .live-now { margin-top: 14px; }
+.live[data-style='retro'] .live-now-temp { font-weight: 700; }
+.live[data-style='retro'] .live-rail-foot { margin-top: auto; padding-top: 10px; border-top: 1px solid rgba(150, 175, 255, 0.28); }
+.live[data-style='retro'] .live-loc-menu {
+  background: #26308c; border: 1px solid var(--border); box-shadow: 0 14px 36px var(--shadow); backdrop-filter: none;
+}
+.live[data-style='retro'] .live-loc-opt { color: var(--text); }
+.live[data-style='retro'] .live-loc-opt.on { color: var(--retro-yellow); }
+
+/* Panel menu: blue bars, current highlighted in yellow (the 90s "active" look). */
+.live[data-style='retro'] .live-nav { display: flex; flex-direction: column; gap: 5px; margin-top: 16px; }
+.live[data-style='retro'] .live-nav-item {
+  text-align: left; padding: 7px 12px; border-radius: 5px;
+  font-size: clamp(12px, 1.05vw, 15px); font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px;
+  color: var(--text);
+  background: linear-gradient(180deg, #333f9e, #232c80);
+  border: 1px solid rgba(160, 185, 255, 0.35);
+  text-shadow: 1px 1px 0 rgba(0, 0, 20, 0.4);
+}
+.live[data-style='retro'] .live-nav-item:hover { background: linear-gradient(180deg, #3c48ad, #2a348c); }
+.live[data-style='retro'] .live-nav-item.on {
+  color: #3a2600; font-weight: 700;
+  background: linear-gradient(180deg, #ffd84a, #f0a81e);
+  border-color: rgba(255, 235, 150, 0.9);
+  text-shadow: none;
+}
+
+/* ---- Stage: royal-blue panel, orange topic bar with yellow blocky title ---- */
+.live[data-style='retro'] .live-stage {
+  border-radius: 8px;
+  background: linear-gradient(180deg, #2b3585, #1e2668);
+  border: 1px solid var(--border);
+  box-shadow: inset 0 0 0 1px rgba(150, 175, 255, 0.1);
+  backdrop-filter: none;
+  text-shadow: 1px 1px 0 rgba(0, 0, 20, 0.35);
+}
+.live[data-style='retro'] .live-panel-title {
+  flex: 1; min-width: 0;
+  color: var(--retro-yellow); font-weight: 700; text-transform: uppercase;
+  font-size: clamp(16px, 1.6vw, 22px);
+  padding: 5px 14px; border-radius: 5px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  background: linear-gradient(90deg, #f2941f 0%, #e07715 42%, rgba(224, 119, 21, 0) 84%);
+  text-shadow: 1px 1px 0 rgba(0, 0, 20, 0.55);
+}
+.live[data-style='retro'] .live-panel-title::after { display: none; }
+.live[data-style='retro'] .live-controls button {
+  color: var(--text);
+  background: linear-gradient(180deg, #333f9e, #232c80);
+  border: 1px solid rgba(160, 185, 255, 0.4);
+  backdrop-filter: none;
+}
+.live[data-style='retro'] .live-controls button:hover { background: linear-gradient(180deg, #3c48ad, #2a348c); }
+
+/* Content tiles: royal-blue boxes with light borders + yellow/cyan accents. */
+.live[data-style='retro'] .live-stat,
+.live[data-style='retro'] .live-hour,
+.live[data-style='retro'] .live-day {
+  border-radius: 6px;
+  background: linear-gradient(180deg, #3a47b0, #28328c);
+  border: 1px solid rgba(160, 185, 255, 0.5);
+  box-shadow: inset 0 1px 0 rgba(185, 205, 255, 0.28);
+}
+.live[data-style='retro'] .live-hourly,
+.live[data-style='retro'] .live-ext { align-self: center; align-items: stretch; }
+.live[data-style='retro'] .live-day { justify-content: center; gap: 6px; }
+.live[data-style='retro'] .live-day-name,
+.live[data-style='retro'] .live-hour-t { color: var(--retro-yellow); }
+.live[data-style='retro'] .live-day-cond,
+.live[data-style='retro'] .live-now-cond,
+.live[data-style='retro'] .live-panel-title { text-transform: uppercase; }
+.live[data-style='retro'] .live-day-lo { color: var(--retro-cyan); }
+.live[data-style='retro'] .live-stat-k { color: var(--retro-cyan); }
+
+/* ---- Bottom crawl: navy bar, yellow tag, white text ---- */
+.live[data-style='retro'] .live-crawl {
+  border-radius: 6px;
+  background: linear-gradient(180deg, #2b3585, #1e2668);
+  border: 1px solid var(--border);
+  backdrop-filter: none;
+}
+.live[data-style='retro'] .live-crawl-track { color: var(--text); text-shadow: 1px 1px 0 rgba(0, 0, 20, 0.35); }
+.live[data-style='retro'] .live-crawl-tag {
+  color: #3a2600; font-weight: 700;
+  background: var(--retro-yellow);
+  text-shadow: none;
+}
+/* Fill the panel so it doesn't feel sparse — tiles stretch to the stage height
+   with content centered, like the reference data screens. */
+.live[data-style='retro'] .live-grid { align-content: stretch; gap: 12px; }
+.live[data-style='retro'] .live-stat { justify-content: center; }
+
+/* ---- Regional map labels (all styles) — city name over temp + real icon,
+   sitting directly on the map with a strong shadow, like the reference ---- */
+.live-map-city {
+  position: absolute; left: 0; top: 0; transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; white-space: nowrap;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.9), 0 0 3px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+.live-map-name { font-size: 13px; font-weight: 700; color: #fff; letter-spacing: 0.2px; }
+.live-map-info { display: flex; align-items: center; gap: 2px; margin-top: -1px; }
+.live-map-temp { font-size: 18px; font-weight: 800; color: #ffd24a; }
+.live-map-city svg { flex: none; }
+.live[data-style='retro'] .live-map-city { font-family: 'Star4000', 'Consolas', ui-monospace, monospace; }
+.live[data-style='retro'] .live-map-name { text-transform: uppercase; }
+
+/* ============================================================================
+   STYLE: Weatherscan (2005–2022 LDL) — light hazy sky, a transparent left column
+   with a cream-headed NOW box, a deep-blue "Currently" panel with gold labels +
+   white values, and a light ticker. Clean humanist sans. [data-style='wscan'].
+   ============================================================================ */
+.live[data-style='wscan'] {
+  --text: #0e2340;             /* near-black navy for the light areas */
+  --text-muted: #294a7c;
+  --text-dim: #5a76a4;
+  --primary: #14509e;
+  --border: rgba(255, 255, 255, 0.6);
+  --shadow: rgba(12, 38, 92, 0.38);
+  --ws-gold: #ffd726;          /* brighter yellow */
+  font-family: 'Overpass', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  /* The designed Weatherscan background (orbit arcs + halftone), deepened a
+     touch so it reads rich, not washed. */
+  background:
+    linear-gradient(180deg, rgba(18, 68, 160, 0.16), rgba(10, 46, 124, 0.26)),
+    url('/live-bg/wscan-bg.png') center / cover no-repeat,
+    linear-gradient(180deg, #bcd8f2, #8fbce6);
+}
+.live[data-style='wscan'] .live-bg,
+.live[data-style='wscan'] .live-scrim { display: none; }
+
+/* Left column: transparent so the sky shows; time over wordmark, then NOW box. */
+.live[data-style='wscan'] .live-rail {
+  background: none; border: none; box-shadow: none; backdrop-filter: none;
+  color: var(--text);
+}
+.live[data-style='wscan'] .live-brand { color: #14509e; font-weight: 800; text-transform: lowercase; letter-spacing: -1px; font-size: clamp(26px, 2.7vw, 38px); }
+.live[data-style='wscan'] .live-brand svg { display: none; }
+.live[data-style='wscan'] .live-badge { display: none; }
+.live[data-style='wscan'] .live-loc-wrap { display: none; } /* city lives in the NOW header instead */
+.live[data-style='wscan'] .live-clock { order: -1; margin-top: 0; margin-bottom: 6px; }
+.live[data-style='wscan'] .live-date { color: var(--text-muted); font-size: clamp(12px, 1vw, 14px); }
+.live[data-style='wscan'] .live-time { color: #103a6e; font-size: clamp(20px, 1.9vw, 27px); font-weight: 700; }
+.live[data-style='wscan'] .live-loc-menu { background: #fff; border: 1px solid rgba(20, 60, 130, 0.2); box-shadow: 0 14px 36px var(--shadow); backdrop-filter: none; }
+.live[data-style='wscan'] .live-loc-opt { color: var(--text); }
+.live[data-style='wscan'] .live-loc-opt.on { color: var(--primary); }
+
+/* NOW box: cream city header + light panel. */
+.live[data-style='wscan'] .live-now {
+  margin-top: 16px; padding: 0; overflow: hidden;
+  border-radius: 4px; border: 1px solid rgba(255, 255, 255, 0.85);
+  background: linear-gradient(180deg, #eaf4ff, #cfe3f7);
+  box-shadow: 0 3px 12px var(--shadow);
+}
+.live[data-style='wscan'] .live-now-city {
+  background: linear-gradient(180deg, #ffce2e, #f0b21c);
+  color: #241d02; font-weight: 800; font-size: clamp(15px, 1.4vw, 20px);
+  padding: 6px 12px;
+}
+.live[data-style='wscan'] .live-now-label { padding: 8px 12px 0; color: var(--text-muted); }
+.live[data-style='wscan'] .live-now-main { padding: 2px 12px 0; }
+.live[data-style='wscan'] .live-now-temp { color: #0e2038; font-weight: 800; }
+.live[data-style='wscan'] .live-now-cond,
+.live[data-style='wscan'] .live-now-feels { padding: 0 12px 10px; color: var(--text-muted); }
+.live[data-style='wscan'] .live-np {
+  background: rgba(255, 255, 255, 0.55); border: 1px solid rgba(255, 255, 255, 0.85); color: var(--text);
+}
+.live[data-style='wscan'] .live-np-title { color: var(--text); }
+.live[data-style='wscan'] .live-rail-foot { display: none; } /* watermark reads blue-on-blue; hide it */
+.live[data-style='wscan'] .live-foot-mark { color: #14509e; }
+
+/* Main stage. The .live-mainbox is invisible to layout everywhere except
+   Weatherscan, where the rotating panel lives in a contained deep-blue box and
+   the forecast strip sits below it as a separate box on the sky. */
+.live-mainbox { display: contents; }
+.live[data-style='wscan'] .live-stage {
+  background: none; border: none; box-shadow: none; backdrop-filter: none;
+  display: flex; flex-direction: column; gap: clamp(12px, 1.8vh, 22px);
+  padding-top: clamp(18px, 2.4vw, 30px);    /* aligns the box top with the "Jul 8" date */
+  padding-bottom: clamp(18px, 2.4vw, 30px); /* strip bottom aligns with Now Playing (now that the watermark's gone) */
+}
+.live[data-style='wscan'] .live-mainbox {
+  flex: 1; min-height: 0;
+  display: flex; flex-direction: column;
+  border-radius: 4px; overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 6px 22px var(--shadow);
+  color: #fff;
+  background:
+    linear-gradient(135deg, rgba(22, 80, 216, 0.7) 0%, rgba(12, 52, 158, 0.8) 52%, rgba(7, 32, 112, 0.9) 100%),
+    url('/live-bg/wscan-skyline.png') center / cover no-repeat,
+    #0f3aa0;
+}
+/* ---- Weatherscan header: a dark top bar (LOCATION + ‹ breadcrumb nav) over a
+   medium-blue title bar (segment name + area), matching the real LDL. ---- */
+.live[data-style='wscan'] .live-wshead { flex: none; }
+.live[data-style='wscan'] .live-wshead-bar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 5px 8px 5px 14px;
+  background: linear-gradient(180deg, #0e327a, #071f56);
+  color: #fff;
+}
+.live[data-style='wscan'] .live-wshead-loc {
+  flex: none; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px;
+  font-size: clamp(14px, 1.4vw, 20px); white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+.live[data-style='wscan'] .live-wshead-nav {
+  flex: 1; min-width: 0; display: flex; align-items: center; justify-content: flex-end;
+  gap: clamp(10px, 1.3vw, 20px); overflow: hidden;
+  color: rgba(184, 209, 247, 0.92); font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.3px; font-size: clamp(11px, 1vw, 14px);
+}
+.live-wsnav-item { display: inline-flex; align-items: center; white-space: nowrap; }
+.live-wsnav-item::before {
+  content: ''; width: 0; height: 0; margin-right: 5px;
+  border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+  border-right: 5px solid currentColor;
+}
+.live[data-style='wscan'] .live-wshead-sub {
+  display: flex; align-items: center; gap: 12px;
+  padding: 6px 16px;
+  background: linear-gradient(180deg, #2f6fd8, #1c4fb2);
+  color: #fff; border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+.live[data-style='wscan'] .live-wshead-title {
+  flex: 1; min-width: 0; font-weight: 700;
+  font-size: clamp(17px, 1.85vw, 25px);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.live[data-style='wscan'] .live-wshead-area {
+  flex: none; font-weight: 500; color: rgba(255, 255, 255, 0.92);
+  font-size: clamp(13px, 1.3vw, 18px); white-space: nowrap;
+}
+/* Controls tuck into the top bar's right end, small + subtle. */
+.live[data-style='wscan'] .live-wshead-bar .live-controls { flex: none; gap: 4px; }
+.live[data-style='wscan'] .live-controls button {
+  width: 26px; height: 26px;
+  color: rgba(255, 255, 255, 0.85); background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.28); backdrop-filter: none;
+}
+.live[data-style='wscan'] .live-controls button:hover { background: rgba(255, 255, 255, 0.3); color: #fff; }
+/* Gold corner wedges on the content area — the classic LDL accent. */
+.live[data-style='wscan'] .live-panel::before,
+.live[data-style='wscan'] .live-panel::after {
+  content: ''; position: absolute; top: 0; z-index: 3;
+  width: 0; height: 0; border-top: clamp(15px, 1.9vw, 24px) solid var(--ws-gold);
+}
+.live[data-style='wscan'] .live-panel::before { left: 0; border-right: clamp(15px, 1.9vw, 24px) solid transparent; }
+.live[data-style='wscan'] .live-panel::after { right: 0; border-left: clamp(15px, 1.9vw, 24px) solid transparent; }
+.live[data-style='wscan'] .live-hour,
+.live[data-style='wscan'] .live-day {
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: none;
+}
+/* "Currently" / "Sun & Air" data as solid, centered, rounded bars (separated by
+   gaps — no colliding underlines), label gold + value white. */
+.live[data-style='wscan'] .live-stat {
+  flex-direction: row; align-items: center; justify-content: space-between; gap: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 7px; box-shadow: none;
+  padding: clamp(6px, 1vh, 12px) clamp(11px, 1.2vw, 16px);
+}
+.live[data-style='wscan'] .live-stat-ic,
+.live[data-style='wscan'] .live-stat-sub { display: none; }
+.live[data-style='wscan'] .live-stat-k { color: var(--ws-gold); font-weight: 700; margin: 0; font-size: clamp(13px, 1.2vw, 17px); }
+.live[data-style='wscan'] .live-stat-v { color: #fff; font-weight: 700; font-size: clamp(14px, 1.3vw, 18px); }
+.live[data-style='wscan'] .live-day-name,
+.live[data-style='wscan'] .live-hour-t { color: var(--ws-gold); }
+.live[data-style='wscan'] .live-day-hi,
+.live[data-style='wscan'] .live-day-lo,
+.live[data-style='wscan'] .live-hour-temp { color: #fff; }
+.live[data-style='wscan'] .live-day-cond { color: rgba(255, 255, 255, 0.85); }
+.live[data-style='wscan'] .live-day-pop,
+.live[data-style='wscan'] .live-hour-pop { color: var(--ws-gold); }
+/* Data-bar grids: single column, gaps between bars. */
+.live[data-style='wscan'] .live-grid { grid-template-columns: 1fr; align-content: center; gap: clamp(5px, 0.9vh, 10px); }
+/* Sun & Air is a standalone grid (not inside .live-wscurr) — fill the panel with
+   two centered columns of bars so it doesn't sit cramped on the left. */
+.live[data-style='wscan'] .live-panel > .live-grid {
+  flex: 1; grid-template-columns: 1fr 1fr; align-content: center;
+  column-gap: clamp(14px, 2.4vw, 40px);
+  padding: 0 clamp(24px, 6vw, 140px);
+}
+
+/* Filled "Currently" layout — data list left, big temperature right, centered;
+   the panel is capped to a contained height (not the full-screen field). */
+.live[data-style='wscan'] .live-panel { flex: 1; min-height: 0; position: relative; }
+/* Fill the whole panel: data bars on the left (capped width), a big icon + big
+   temperature centered in the rest — no dead space on wide screens. */
+.live[data-style='wscan'] .live-wscurr {
+  flex: 1; display: flex; height: 100%; align-items: stretch;
+  gap: clamp(18px, 3vw, 56px); padding: clamp(16px, 2.2vh, 30px) clamp(16px, 2.6vw, 44px);
+}
+.live[data-style='wscan'] .live-wscurr .live-grid {
+  flex: 0 1 clamp(240px, 34%, 460px); align-content: center;
+  padding-right: clamp(16px, 2.4vw, 40px); border-right: 1px solid rgba(255, 255, 255, 0.25);
+}
+.live[data-style='wscan'] .live-wscurr-side {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; gap: clamp(4px, 1vh, 14px);
+}
+.live[data-style='wscan'] .live-wscurr-ic { line-height: 0; }
+.live[data-style='wscan'] .live-wscurr-ic svg { width: clamp(96px, 12vw, 200px); height: auto; }
+.live[data-style='wscan'] .live-wscurr-cond { font-size: clamp(20px, 2.4vw, 40px); font-weight: 700; color: #fff; }
+.live[data-style='wscan'] .live-wscurr-big { font-size: clamp(72px, 10vw, 170px); font-weight: 800; color: #fff; line-height: 0.92; letter-spacing: -3px; }
+
+/* "Today's Forecast" as its own light box below the main panel (on the sky). */
+.live[data-style='wscan'] .live-fcstrip {
+  flex: none;
+  border-radius: 4px; overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow: 0 4px 14px var(--shadow);
+}
+.live[data-style='wscan'] .live-fcstrip-head {
+  background: linear-gradient(180deg, #ffce2e, #f0b21c);
+  color: #241d02; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px;
+  font-size: clamp(12px, 1.05vw, 15px); padding: 4px 12px;
+}
+.live[data-style='wscan'] .live-fcstrip-row {
+  display: flex; align-items: flex-end; gap: 1px;
+  height: clamp(92px, 12vh, 130px);
+  padding: 8px 10px 0;
+  background: linear-gradient(180deg, #d5e6f8, #a9c9ec);
+  border-bottom: 3px solid var(--ws-gold);
+}
+.live[data-style='wscan'] .live-fc {
+  flex: 1; min-width: 0; height: 100%;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+}
+.live[data-style='wscan'] .live-fc-temp { color: #10305e; font-weight: 800; font-size: clamp(15px, 1.4vw, 20px); }
+.live[data-style='wscan'] .live-fc-bar {
+  width: clamp(20px, 2.2vw, 32px); margin-top: 4px;
+  background: linear-gradient(90deg, #a9bcda 0%, #eef4fc 42%, #c3d2ea 60%, #93aed6 100%);
+  border-radius: 2px 2px 0 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+.live[data-style='wscan'] .live-fc-t { color: #163a6e; font-weight: 700; font-size: clamp(10px, 0.9vw, 12px); margin-top: 5px; }
+/* Hourly + extended fill the panel height (tall cards), like the real LDL —
+   content spread top-to-bottom, larger icons. */
+.live[data-style='wscan'] .live-hourly,
+.live[data-style='wscan'] .live-ext { align-self: stretch; align-items: stretch; height: 100%; gap: clamp(5px, 0.7vw, 11px); }
+.live[data-style='wscan'] .live-hour,
+.live[data-style='wscan'] .live-day { justify-content: space-evenly; gap: 4px; padding: clamp(14px, 2.4vh, 30px) 6px; }
+.live[data-style='wscan'] .live-hour-ic svg,
+.live[data-style='wscan'] .live-day-ic svg { width: clamp(42px, 4.4vw, 72px); height: auto; }
+.live[data-style='wscan'] .live-hour-t,
+.live[data-style='wscan'] .live-day-name { font-size: clamp(14px, 1.25vw, 18px); }
+.live[data-style='wscan'] .live-hour-temp { font-size: clamp(24px, 2.4vw, 36px); }
+.live[data-style='wscan'] .live-day-hi { font-size: clamp(20px, 2vw, 30px); }
+.live[data-style='wscan'] .live-dot.on { background: var(--ws-gold); }
+
+/* Bottom ticker: light LDL strip with a gray NOW tag. */
+.live[data-style='wscan'] .live-crawl {
+  border-radius: 4px;
+  background: linear-gradient(180deg, #eef5fd, #d7e7f8);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  backdrop-filter: none;
+}
+.live[data-style='wscan'] .live-crawl-track { color: #103a6e; }
+.live[data-style='wscan'] .live-crawl-tag { color: #fff; background: #5a6b82; text-shadow: none; }
+
+
+/* "Past 3 Hours" mini radar map — pushed down the left column so it sits low,
+   roughly level with the forecast strip. */
+.live[data-style='wscan'] .live-past3 {
+  margin-top: auto; border-radius: 4px; overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 3px 12px var(--shadow);
+}
+.live[data-style='wscan'] .live-past3-head {
+  background: linear-gradient(180deg, #4a5568, #38414f);
+  color: #fff; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+  font-size: 12px; padding: 4px 10px; text-align: right;
+}
+.live[data-style='wscan'] .live-past3-map { height: clamp(140px, 22vh, 240px); display: flex; }
+.live[data-style='wscan'] .live-past3-map .live-radar { border: none; border-radius: 0; }
+
+/* ---- Weatherscan: larger broadcast typography, so it reads across a room.
+   Gated by the .big-text class (toggled inside Auros Live); off = the smaller
+   sizes set above. Scaled up proportionally — the layouts already have room. ---- */
+.live.big-text[data-style='wscan'] .live-brand { font-size: clamp(30px, 3.1vw, 46px); }
+.live.big-text[data-style='wscan'] .live-date { font-size: clamp(13px, 1.2vw, 18px); }
+.live.big-text[data-style='wscan'] .live-time { font-size: clamp(24px, 2.4vw, 36px); }
+.live.big-text[data-style='wscan'] .live-now-city { font-size: clamp(17px, 1.7vw, 25px); }
+.live.big-text[data-style='wscan'] .live-now-label { font-size: clamp(12px, 1vw, 15px); }
+.live.big-text[data-style='wscan'] .live-now-temp { font-size: clamp(60px, 6.6vw, 96px); }
+.live.big-text[data-style='wscan'] .live-now-cond { font-size: clamp(17px, 1.6vw, 24px); }
+.live.big-text[data-style='wscan'] .live-now-feels { font-size: clamp(13px, 1.2vw, 17px); }
+
+.live.big-text[data-style='wscan'] .live-wshead-loc { font-size: clamp(16px, 1.7vw, 25px); }
+.live.big-text[data-style='wscan'] .live-wshead-nav { font-size: clamp(12px, 1.15vw, 16px); }
+.live.big-text[data-style='wscan'] .live-wshead-title { font-size: clamp(20px, 2.2vw, 33px); }
+.live.big-text[data-style='wscan'] .live-wshead-area { font-size: clamp(15px, 1.55vw, 23px); }
+
+.live.big-text[data-style='wscan'] .live-stat-k { font-size: clamp(15px, 1.55vw, 23px); }
+.live.big-text[data-style='wscan'] .live-stat-v { font-size: clamp(16px, 1.7vw, 25px); }
+.live.big-text[data-style='wscan'] .live-wscurr-cond { font-size: clamp(24px, 3vw, 50px); }
+.live.big-text[data-style='wscan'] .live-wscurr-big { font-size: clamp(84px, 11vw, 190px); }
+
+.live.big-text[data-style='wscan'] .live-hour-t { font-size: clamp(16px, 1.6vw, 24px); }
+.live.big-text[data-style='wscan'] .live-hour-temp { font-size: clamp(28px, 3vw, 46px); }
+.live.big-text[data-style='wscan'] .live-hour-pop { font-size: clamp(13px, 1.2vw, 18px); }
+
+.live.big-text[data-style='wscan'] .live-day-name { font-size: clamp(16px, 1.6vw, 24px); }
+.live.big-text[data-style='wscan'] .live-day-cond { font-size: clamp(13px, 1.25vw, 18px); }
+.live.big-text[data-style='wscan'] .live-day-hi { font-size: clamp(24px, 2.5vw, 40px); }
+.live.big-text[data-style='wscan'] .live-day-lo { font-size: clamp(16px, 1.5vw, 24px); }
+.live.big-text[data-style='wscan'] .live-day-pop { font-size: clamp(13px, 1.2vw, 17px); }
+
+.live.big-text[data-style='wscan'] .live-fcstrip-head { font-size: clamp(14px, 1.35vw, 20px); }
+.live.big-text[data-style='wscan'] .live-fc-temp { font-size: clamp(18px, 1.8vw, 27px); }
+.live.big-text[data-style='wscan'] .live-fc-t { font-size: clamp(12px, 1.1vw, 16px); }
+
+.live.big-text[data-style='wscan'] .live-crawl-tag { font-size: clamp(11px, 1vw, 15px); }
+.live.big-text[data-style='wscan'] .live-crawl-track { font-size: clamp(18px, 1.7vw, 28px); }
+.live.big-text[data-style='wscan'] .live-map-name { font-size: clamp(14px, 1.3vw, 18px); }
+.live.big-text[data-style='wscan'] .live-map-temp { font-size: clamp(20px, 1.9vw, 28px); }
+
+/* Severe break-in (Weatherscan): ring the blue box itself so the red pulse lines
+   up with its square corners (not the larger rounded stage), and make the sub-text
+   light so it reads on the deep-blue background. */
+.live[data-style='wscan'].live--alert .live-stage { box-shadow: none; animation: none; border-color: transparent; }
+.live[data-style='wscan'].live--alert .live-mainbox {
+  border: 2px solid color-mix(in srgb, var(--live-red) 66%, #fff);
+  animation: live-alert-pulse 2.4s ease-in-out infinite;
+}
+.live[data-style='wscan'] .live-breakin-area { color: #fff; }
+.live[data-style='wscan'] .live-breakin-until,
+.live[data-style='wscan'] .live-breakin-instr { color: rgba(255, 255, 255, 0.9); }
+.live[data-style='wscan'] .live-breakin-hint { color: rgba(255, 255, 255, 0.62); }

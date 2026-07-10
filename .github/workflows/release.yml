@@ -122,7 +122,7 @@ jobs:
           VITE_FB_APP_ID: ${{ secrets.VITE_FB_APP_ID }}
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.VITE_GOOGLE_CLIENT_SECRET }}
-        run: npm run build
+        run: npm run build:native # strips the bundled Auros Live audio; the app streams it instead
       - name: Add Android platform
         run: npx cap add android
       - name: Brand the launcher icon

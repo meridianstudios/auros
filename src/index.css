@@ -160,9 +160,9 @@ input { font-family: inherit; }
     radial-gradient(1px 1px at 57% 76%, rgba(255,255,255,0.5), transparent); }
 
 /* Clouds. */
-.hero-sky .cloud { position: absolute; border-radius: 50%; filter: blur(7px); background: radial-gradient(circle, rgba(198,208,228,0.5), rgba(198,208,228,0.12) 60%, transparent 75%); }
-.hero-sky.is-night .cloud { background: radial-gradient(circle, rgba(150,162,190,0.42), rgba(150,162,190,0.1) 60%, transparent 75%); }
-.hero-sky .cloud.dark { background: radial-gradient(circle, rgba(118,128,150,0.55), rgba(118,128,150,0.14) 60%, transparent 75%); }
+.hero-sky .cloud { position: absolute; border-radius: 50%; filter: blur(18px); background: radial-gradient(ellipse 62% 100% at 50% 50%, rgba(206,217,237,0.26), rgba(206,217,237,0.07) 62%, transparent 80%); }
+.hero-sky.is-night .cloud { background: radial-gradient(ellipse 62% 100% at 50% 50%, rgba(150,162,190,0.2), rgba(150,162,190,0.06) 62%, transparent 80%); }
+.hero-sky .cloud.dark { background: radial-gradient(ellipse 62% 100% at 50% 50%, rgba(118,128,150,0.42), rgba(118,128,150,0.12) 62%, transparent 80%); }
 .hero-sky .cloud.c1 { width: 150px; height: 72px; top: 8px; left: 4%; animation: sky-drift 30s ease-in-out infinite alternate; }
 .hero-sky .cloud.c2 { width: 190px; height: 84px; top: 40px; left: 40%; opacity: 0.8; animation: sky-drift 38s ease-in-out infinite alternate-reverse; }
 .hero-sky .cloud.c3 { width: 120px; height: 60px; top: -6px; left: 66%; opacity: 0.7; animation: sky-drift 34s ease-in-out infinite alternate; }
