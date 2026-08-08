@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState, type TouchEvent } from 'react';
-import { MapPin, ChevronDown, ChevronRight, ShieldCheck, CloudLightning, Zap, RotateCw } from 'lucide-react';
+import { useEffect, useRef, useState, type TouchEvent, type ReactNode } from 'react';
+import { MapPin, ChevronDown, ChevronRight, ShieldCheck, CloudLightning, Zap, RotateCw,
+  Thermometer, Droplets, Droplet, Wind, Sun, Leaf, Flower2, Gauge, Eye, Sunrise, Sunset, type LucideIcon } from 'lucide-react';
+import { tempColor } from '../lib/tempColor';
 import { useLocations } from '../context/LocationsContext';
 import { useWeather } from '../hooks/useWeather';
 import { useConditions } from '../hooks/useConditions';
@@ -14,7 +16,7 @@ import { RiskBadge } from '../components/RiskBadge';
 import { AlertCard } from '../components/AlertCard';
 import { CondIcon } from '../components/CondIcon';
 import { HourlyGraph } from '../components/HourlyGraph';
-import { HeroSky } from '../components/HeroSky';
+import { SkyPhoto } from '../components/SkyPhoto';
 import { useLandmark } from '../api/landmark';
 import { SevereBanner } from '../components/SevereBanner';
 import type { RiskMeta } from '../theme/colors';
@@ -47,13 +49,53 @@ function ago(ts: number): string {
   return `Updated ${Math.round(s / 3600)}h ago`;
 }
 
-function Tile({ k, v, sub, color }: { k: string; v: string; sub?: string; color?: string }) {
+function Tile({ k, v, sub, color, Icon, accent }: { k: string; v: string; sub?: string; color?: string; Icon?: LucideIcon; accent?: string }) {
   return (
     <div className="ctile">
-      <div className="ck">{k}</div>
+      <div className="ct-top">
+        {Icon && <span className="ct-ic" style={accent ? { color: accent } : undefined}><Icon size={15} /></span>}
+        <div className="ck">{k}</div>
+      </div>
       <div className="cv" style={color ? { color } : undefined}>{v}</div>
       {sub && <div className="csub">{sub}</div>}
     </div>
+  );
+}
+
+// Colorful per-condition icon tint for the 7-day list (sunny gold, rain blue…).
+function condIconColor(p: { shortForecast?: string; isDaytime?: boolean }): string {
+  const s = (p.shortForecast || '').toLowerCase();
+  if (/thunder|t-storm/.test(s)) return '#FBBF24';
+  if (/snow|sleet|ice|flurr|wintry/.test(s)) return '#93C5FD';
+  if (/rain|shower|drizzle/.test(s)) return '#38BDF8';
+  if (/fog|haze|mist/.test(s)) return '#94A3B8';
+  if (/cloud|overcast/.test(s)) return '#AAB3C6';
+  if (/sun|clear/.test(s)) return p.isDaytime !== false ? '#FBBF24' : '#CBD5E1';
+  return '#AAB3C6';
+}
+
+// A collapsible glass panel — the header row toggles the body open/closed
+// (MSC-style). `action` is an optional control on the header (e.g. a "full
+// forecast" link) that doesn't trigger the collapse. `flush` drops body padding
+// for edge-to-edge lists.
+function Section({ title, action, flush = false, defaultOpen = true, children }: { title: string; action?: ReactNode; flush?: boolean; defaultOpen?: boolean; children: ReactNode }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const toggle = () => setOpen((o) => !o);
+  return (
+    <section className={`hsec${open ? ' open' : ''}`}>
+      <div
+        className="hsec-head"
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onClick={toggle}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }}
+      >
+        <span className="hsec-title">{title}</span>
+        <span className="hsec-right">{action}<ChevronDown className="hsec-chev" size={18} /></span>
+      </div>
+      <div className={`hsec-body${flush ? ' flush' : ''}`}>{children}</div>
+    </section>
   );
 }
 
@@ -115,9 +157,28 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
   const day3Label = new Date(Date.now() + 2 * 86400000).toLocaleDateString([], { weekday: 'long' });
   const isDay = c ? c.isDay : true;
   const warning = [...w.alerts].filter((a) => /warning/i.test(a.event)).sort((a, b) => sevRank(b.severity) - sevRank(a.severity))[0];
+  // Only surface tropical systems close enough to matter. A storm thousands of
+  // miles away (e.g. an East Pacific system off Mexico) is no threat here, so
+  // showing "… 3,400 mi away" is just noise.
   const storms = (trop?.storms ?? [])
     .map((s) => ({ ...s, dist: haversineMiles(selected.lat, selected.lon, s.lat, s.lon) }))
+    .filter((s) => s.dist <= 700)
     .sort((a, b) => a.dist - b.dist);
+
+  // 7-day rows: pair each daytime high with the following night's low, and find
+  // the week's overall range so every day's range bar shares one scale.
+  const dailyRows = w.daily
+    .map((p, i) => ({ p, i }))
+    .filter((x) => x.p.isDaytime)
+    .slice(0, 7)
+    .map((x) => {
+      const next = w.daily[x.i + 1];
+      const low = next && next.isDaytime === false ? next.temperature : undefined;
+      return { day: x.p, high: x.p.temperature, low };
+    });
+  const wkTemps = dailyRows.flatMap((r) => (r.low != null ? [r.high, r.low] : [r.high]));
+  const wkMin = wkTemps.length ? Math.min(...wkTemps) : 0;
+  const wkRange = Math.max(1, (wkTemps.length ? Math.max(...wkTemps) : 1) - wkMin);
 
   // Swipe the hero to cycle locations: the content tracks your finger and the
   // destination peeks in, then it commits (slide-in) or springs back. Natural
@@ -198,13 +259,21 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
 
   return (
     <div className="view fade home-view">
+      {heroImg ? (
+        <div className="home-sky">
+          <div className="home-sky-layer">
+            <div className="home-sky-img" style={{ backgroundImage: `url("${heroImg}")` }} />
+            <div className="home-sky-tint" />
+          </div>
+        </div>
+      ) : (
+        <SkyPhoto condition={w.current?.shortForecast} isDay={isDay} variant="page" />
+      )}
+      <div className="home-inner">
       <div className="app-header">
         <div className="brand"><Zap size={16} /> Auros</div>
       </div>
-      <div className={`hero${heroImg ? ' has-photo' : ''}`} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
-        {heroImg
-          ? <div className="hero-photo" style={{ backgroundImage: `url("${heroImg}")` }} />
-          : <HeroSky condition={w.current?.shortForecast} day={isDay} sunrise={c?.sunrise} sunset={c?.sunset} now={c?.localTime} />}
+      <div className="hero has-photo" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
         {nextLoc && <div className="hero-peek hero-peek-next" ref={peekNextRef}>{shortPlace(nextLoc.name)} <MapPin size={13} /></div>}
         {prevLoc && <div className="hero-peek hero-peek-prev" ref={peekPrevRef}><MapPin size={13} /> {shortPlace(prevLoc.name)}</div>}
         <div className={`hero-content hero-anim-${animDir}`} key={selectedId} ref={heroContentRef}>
@@ -223,7 +292,7 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
               <div className="temp">{w.current ? `${convertTemp(w.current.temperature, u)}°` : w.error ? '—' : <span className="skel skel-temp" />}</div>
               <div className="cond">{w.current?.shortForecast ?? (w.error ? 'Unavailable' : <span className="skel skel-cond" />)}</div>
             </div>
-            {w.current && <span className="hero-ic"><CondIcon p={w.current} size={46} color="var(--primary)" /></span>}
+            {w.current && <span className="hero-ic"><CondIcon p={w.current} size={46} color="#ffffff" /></span>}
           </div>
           {w.current && (
             <div className="hero-stats">
@@ -288,15 +357,16 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
 
         {/* Hourly forecast — icons + per-hour temps + temperature curve */}
         {w.hourly.length > 0 ? (
-          <>
-            <div className="label">
-              <span>Hourly Forecast</span>
-              <button className="dim" style={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: 11, fontWeight: 600, letterSpacing: 0.7 }} onClick={() => onNavigate('forecast')}>
+          <Section
+            title="Hourly Forecast"
+            action={
+              <button className="hsec-action" onClick={(e) => { e.stopPropagation(); onNavigate('forecast'); }}>
                 FULL FORECAST <ChevronRight size={13} />
               </button>
-            </div>
+            }
+          >
             <HourlyGraph hourly={w.hourly} units={u} />
-          </>
+          </Section>
         ) : w.loading && !w.error ? (
           <>
             <div className="label"><span>Hourly Forecast</span></div>
@@ -305,28 +375,30 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
         ) : null}
 
         {(c || w.loading) && (
-          <>
-            <div className="label">Conditions</div>
-            {!c ? (
+          !c ? (
+            <>
+              <div className="label">Conditions</div>
               <div className="cond-grid">
                 {Array.from({ length: 8 }).map((_, i) => <div key={i} className="skel skel-tile" />)}
               </div>
-            ) : (
+            </>
+          ) : (
+            <Section title="Conditions">
             <div className="cond-grid sec-in">
-              {c.feelsLikeF != null && <Tile k="Feels like" v={`${convertTemp(c.feelsLikeF, u)}°`} />}
-              {c.humidity != null && <Tile k="Humidity" v={`${c.humidity}%`} />}
-              {c.dewpointF != null && <Tile k="Dew point" v={`${convertTemp(c.dewpointF, u)}°`} />}
-              {c.gustMph != null && <Tile k="Wind gust" v={u === 'C' ? `${Math.round(c.gustMph * 1.609)} km/h` : `${Math.round(c.gustMph)} mph`} />}
-              {c.uv != null && <Tile k="UV index" v={`${Math.round(c.uv)}`} sub={uvInfo(c.uv)} color={uvColor(c.uv)} />}
-              {c.aqi != null && <Tile k="Air quality" v={`${c.aqi}`} sub={aqiInfo(c.aqi).label} color={aqiInfo(c.aqi).color} />}
-              {pollen && <Tile k="Pollen" v={pollenInfo(pollen.index).label} sub={pollen.triggers.join(', ') || undefined} color={pollenInfo(pollen.index).color} />}
-              {c.pressureHpa != null && <Tile k="Pressure" v={u === 'C' ? `${Math.round(c.pressureHpa)} hPa` : `${(c.pressureHpa * 0.02953).toFixed(2)} in`} />}
-              {c.visibilityM != null && <Tile k="Visibility" v={u === 'C' ? `${Math.round(c.visibilityM / 1000)} km` : `${Math.round(c.visibilityM / 1609)} mi`} />}
-              {c.sunrise && <Tile k="Sunrise" v={fmtClock(c.sunrise)} />}
-              {c.sunset && <Tile k="Sunset" v={fmtClock(c.sunset)} />}
+              {c.feelsLikeF != null && <Tile k="Feels like" v={`${convertTemp(c.feelsLikeF, u)}°`} Icon={Thermometer} accent="#FB923C" />}
+              {c.humidity != null && <Tile k="Humidity" v={`${c.humidity}%`} Icon={Droplets} accent="#38BDF8" />}
+              {c.dewpointF != null && <Tile k="Dew point" v={`${convertTemp(c.dewpointF, u)}°`} Icon={Droplet} accent="#2DD4BF" />}
+              {c.gustMph != null && <Tile k="Wind gust" v={u === 'C' ? `${Math.round(c.gustMph * 1.609)} km/h` : `${Math.round(c.gustMph)} mph`} Icon={Wind} accent="#7DD3FC" />}
+              {c.uv != null && <Tile k="UV index" v={`${Math.round(c.uv)}`} sub={uvInfo(c.uv)} color={uvColor(c.uv)} Icon={Sun} accent={uvColor(c.uv)} />}
+              {c.aqi != null && <Tile k="Air quality" v={`${c.aqi}`} sub={aqiInfo(c.aqi).label} color={aqiInfo(c.aqi).color} Icon={Leaf} accent={aqiInfo(c.aqi).color} />}
+              {pollen && <Tile k="Pollen" v={pollenInfo(pollen.index).label} sub={pollen.triggers.join(', ') || undefined} color={pollenInfo(pollen.index).color} Icon={Flower2} accent={pollenInfo(pollen.index).color} />}
+              {c.pressureHpa != null && <Tile k="Pressure" v={u === 'C' ? `${Math.round(c.pressureHpa)} hPa` : `${(c.pressureHpa * 0.02953).toFixed(2)} in`} Icon={Gauge} accent="#A78BFA" />}
+              {c.visibilityM != null && <Tile k="Visibility" v={u === 'C' ? `${Math.round(c.visibilityM / 1000)} km` : `${Math.round(c.visibilityM / 1609)} mi`} Icon={Eye} accent="#93A4C4" />}
+              {c.sunrise && <Tile k="Sunrise" v={fmtClock(c.sunrise)} Icon={Sunrise} accent="#FBBF24" />}
+              {c.sunset && <Tile k="Sunset" v={fmtClock(c.sunset)} Icon={Sunset} accent="#FB923C" />}
             </div>
-            )}
-          </>
+            </Section>
+          )
         )}
 
         <div className="dash">
@@ -396,32 +468,55 @@ export function Home({ onNavigate }: { onNavigate: (v: View) => void }) {
           {(w.daily.length > 0 || w.loading) && (
             <div className="dash-side">
               <section className="block">
-                <div className="label">7-Day Forecast</div>
                 {w.daily.length === 0 ? (
-                  <div className="group">
-                    {Array.from({ length: 7 }).map((_, i) => (
-                      <div className="item" key={i}><span className="skel skel-row" /></div>
-                    ))}
-                  </div>
+                  <>
+                    <div className="label">7-Day Forecast</div>
+                    <div className="group">
+                      {Array.from({ length: 7 }).map((_, i) => (
+                        <div className="item" key={i}><span className="skel skel-row" /></div>
+                      ))}
+                    </div>
+                  </>
                 ) : (
+                <Section title="7-Day Forecast" flush>
                 <div className="group sec-in">
-                  {w.daily.filter((p) => p.isDaytime).slice(0, 7).map((p) => {
-                    const pop = p.probabilityOfPrecipitation?.value ?? 0;
+                  {dailyRows.map((r, idx) => {
+                    const pop = r.day.probabilityOfPrecipitation?.value ?? 0;
+                    const loT = r.low != null ? r.low : r.high;
+                    const leftPct = ((loT - wkMin) / wkRange) * 100;
+                    const rightPct = ((r.high - wkMin) / wkRange) * 100;
+                    const nm = r.day.name || '';
+                    const dayLabel = idx === 0 || /today|this afternoon/i.test(nm)
+                      ? 'Today'
+                      : new Date(r.day.startTime).toLocaleDateString([], { weekday: 'short' });
                     return (
-                      <div className="item" key={p.startTime}>
-                        <span className="ic"><CondIcon p={p} size={20} /></span>
-                        <div className="grow"><div className="t">{p.name}</div></div>
-                        {pop >= 10 && <span className="dim" style={{ fontSize: 12, marginRight: 10 }}>{pop}%</span>}
-                        <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{convertTemp(p.temperature, u)}°</span>
+                      <div className="drow" key={r.day.startTime}>
+                        <div className="drow-day">{dayLabel}</div>
+                        <span className="drow-ic"><CondIcon p={r.day} size={22} color={condIconColor(r.day)} /></span>
+                        <span className="drow-pop">{pop >= 10 ? `${pop}%` : ''}</span>
+                        <span className="drow-lo">{r.low != null ? `${convertTemp(r.low, u)}°` : ''}</span>
+                        <div className="drow-track">
+                          <div
+                            className="drow-fill"
+                            style={{
+                              left: `${leftPct}%`,
+                              right: `${100 - rightPct}%`,
+                              background: `linear-gradient(90deg, ${tempColor(loT)}, ${tempColor(r.high)})`,
+                            }}
+                          />
+                        </div>
+                        <span className="drow-hi">{convertTemp(r.high, u)}°</span>
                       </div>
                     );
                   })}
                 </div>
+                </Section>
                 )}
               </section>
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

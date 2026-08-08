@@ -26,12 +26,16 @@ function applyVars(p: Palette) {
   r.style.setProperty('--success', p.success);
   r.style.setProperty('--warning', p.warning);
   r.style.setProperty('--danger', p.danger);
+  r.style.setProperty('--glass', p.glass);
 }
+
+const ORDER: Scheme[] = ['midnight', 'storm', 'dark'];
 
 function initialScheme(): Scheme {
   const saved = localStorage.getItem(KEY);
-  if (saved === 'dark' || saved === 'light') return saved;
-  return window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  if (saved && saved in palettes) return saved as Scheme;
+  // Older builds stored 'light' (retired) — fall back to the default.
+  return 'dark';
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
@@ -48,7 +52,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   };
 
   const value = useMemo<ThemeValue>(
-    () => ({ scheme, colors: palettes[scheme], toggle: () => setScheme(scheme === 'dark' ? 'light' : 'dark'), setScheme }),
+    () => ({
+      scheme,
+      colors: palettes[scheme],
+      toggle: () => setScheme(ORDER[(ORDER.indexOf(scheme) + 1) % ORDER.length]),
+      setScheme,
+    }),
     [scheme]
   );
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Moon, Sun, Bell, ExternalLink, Siren, Download, Trash2, LogOut, Music } from 'lucide-react';
+import { Bell, ExternalLink, Siren, Download, Trash2, LogOut, Music } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
+import { THEMES } from '../theme/colors';
 import { usePrefs, type NotifyPrefs } from '../lib/prefs';
 import { notify } from '../lib/notify';
 import { isNative } from '../lib/platform';
@@ -73,11 +74,22 @@ export function Settings() {
     <div className="view fade">
       <div className="topbar"><h1>Settings</h1></div>
       <div className="pad">
-        <div className="label">Appearance</div>
-        <div className="seg" style={{ marginBottom: 10 }}>
-          <button className={scheme === 'dark' ? 'on' : ''} onClick={() => setScheme('dark')}><Moon size={15} /> Dark</button>
-          <button className={scheme === 'light' ? 'on' : ''} onClick={() => setScheme('light')}><Sun size={15} /> Light</button>
+        <div className="label">Theme</div>
+        <div className="theme-pick">
+          {THEMES.map((t) => (
+            <button
+              key={t.key}
+              className={`theme-card ${scheme === t.key ? 'on' : ''}`}
+              onClick={() => setScheme(t.key)}
+              aria-pressed={scheme === t.key}
+            >
+              <span className="theme-swatch" data-theme-swatch={t.key} />
+              <span className="theme-name">{t.label}</span>
+              <span className="theme-hint">{t.hint}</span>
+            </button>
+          ))}
         </div>
+        <div className="label">Units</div>
         <div className="seg">
           <button className={prefs.units === 'F' ? 'on' : ''} onClick={() => setUnits('F')}>°F</button>
           <button className={prefs.units === 'C' ? 'on' : ''} onClick={() => setUnits('C')}>°C</button>

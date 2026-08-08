@@ -1,14 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { convertTemp, type Units } from '../lib/prefs';
+import { tempColor } from '../lib/tempColor';
 import { CondIcon } from './CondIcon';
 import type { NwsPeriod } from '../api/nws';
 
 // Hourly forecast as a single graph: per-hour column (time / icon / temp) with a
-// smooth temperature curve + dots flowing underneath, aligned to each hour.
-// Columns grow to fill the width (with a min so they don't crowd on phones —
-// when there isn't room they keep the min width and the row scrolls).
+// smooth temperature curve + dots flowing underneath, aligned to each hour. The
+// curve is colored by temperature the way the TWC app does it — deep blue on the
+// cold hours, warming through cyan/green/yellow to orange and red on the hot ones
+// — so a single glance reads the shape of the day.
+// Columns grow to fill the width (with a min so they don't crowd on phones — when
+// there isn't room they keep the min width and the row scrolls).
 const MIN_COL = 56; // min column width (px)
-const CURVE_H = 50; // curve band height
+const CURVE_H = 54; // curve band height
 const PAD = 10;
 
 // Catmull-Rom → cubic bézier for a smooth temperature curve.
@@ -59,6 +63,13 @@ export function HourlyGraph({ hourly, units }: { hourly: NwsPeriod[]; units: Uni
   const line = smoothPath(edged);
   const area = `${line} L ${W.toFixed(1)} ${CURVE_H} L 0 ${CURVE_H} Z`;
 
+  // Gradient stops along the curve, one per hour, colored by that hour's temp.
+  const stops = [
+    { off: 0, col: tempColor(temps[0]) },
+    ...pts.map((p, i) => ({ off: Math.min(1, Math.max(0, p.x / W)), col: tempColor(temps[i]) })),
+    { off: 1, col: tempColor(temps[n - 1]) },
+  ];
+
   return (
     <div className="card hg-card">
       <div className="hg-scroll" ref={scrollRef}>
@@ -70,22 +81,23 @@ export function HourlyGraph({ hourly, units }: { hourly: NwsPeriod[]; units: Uni
                 <div className="hg-col" key={h.startTime} style={{ width: col }}>
                   <div className="hg-hr">{i === 0 ? 'Now' : new Date(h.startTime).toLocaleTimeString([], { hour: 'numeric' })}</div>
                   <CondIcon p={h} size={23} color={sunny ? '#FBBF24' : 'var(--text-muted)'} />
-                  <div className="hg-temp">{convertTemp(h.temperature, units)}°</div>
+                  <div className="hg-temp" style={{ color: tempColor(h.temperature) }}>{convertTemp(h.temperature, units)}°</div>
                 </div>
               );
             })}
           </div>
           <svg className="hg-svg" width={W} height={CURVE_H} viewBox={`0 0 ${W} ${CURVE_H}`} preserveAspectRatio="none">
             <defs>
-              <linearGradient id="hg-fill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stopColor="var(--primary)" stopOpacity="0.28" />
-                <stop offset="1" stopColor="var(--primary)" stopOpacity="0" />
+              <linearGradient id="hg-line" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2={W} y2="0">
+                {stops.map((s, i) => (
+                  <stop key={i} offset={s.off} stopColor={s.col} />
+                ))}
               </linearGradient>
             </defs>
-            <path d={area} fill="url(#hg-fill)" />
-            <path d={line} fill="none" stroke="var(--primary)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+            <path d={area} fill="url(#hg-line)" fillOpacity="0.14" />
+            <path d={line} fill="none" stroke="url(#hg-line)" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
             {pts.map((p, i) => (
-              <circle key={i} cx={p.x.toFixed(1)} cy={p.y.toFixed(1)} r="2.8" fill="var(--primary)" stroke="var(--surface)" strokeWidth="1.5" />
+              <circle key={i} cx={p.x.toFixed(1)} cy={p.y.toFixed(1)} r="2.8" fill={tempColor(temps[i])} stroke="var(--surface)" strokeWidth="1.5" />
             ))}
           </svg>
         </div>

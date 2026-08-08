@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Play, Pause, Cloud, Loader } from 'lucide-react';
@@ -27,6 +27,10 @@ const FRAMES: Frame[] = [50, 45, 40, 35, 30, 25, 20, 15, 10, 5, 0].map((m) => ({
   minsAgo: m,
 }));
 const refUrl = (idx: number) => `${IEM}/nexrad-n0q-900913${FRAMES[idx].suffix}/{z}/{x}/{y}.png`;
+
+// NWS base-reflectivity color scale (matches the IEM n0q mosaic) — for the legend.
+const REFLECTIVITY_SCALE =
+  'linear-gradient(90deg,#04e5e5,#019ff4 9%,#0300f4 18%,#02fd02 27%,#01c501 36%,#008e00 45%,#fdf802 54%,#e5bc00 63%,#fd9500 72%,#fd0000 81%,#bc0000 90%,#f800fd)';
 
 // Official NWS Watches/Warnings/Advisories overlay (ArcGIS MapServer export).
 // Layer 1 holds the zone-based alerts — Extreme Heat Warning, winter, wind,
@@ -137,7 +141,9 @@ export function Radar() {
     if (!el) return;
     let cancelled = false;
 
-    const map = L.map(el, { zoomControl: true, attributionControl: true, maxZoom: 16, minZoom: 4 }).setView(
+    // fadeAnimation off: tiles swap in cleanly instead of cross-fading through the
+    // (now-slate) container, which briefly dimmed the whole map on loads/refreshes.
+    const map = L.map(el, { zoomControl: true, attributionControl: true, maxZoom: 16, minZoom: 4, fadeAnimation: false }).setView(
       [selected.lat, selected.lon],
       9
     );
@@ -146,11 +152,12 @@ export function Radar() {
     map.zoomControl.setPosition('bottomleft');
     mapRef.current = map;
 
+    // Every theme is dark-family, so the map always uses the dark basemap.
     const baseUrl =
-      scheme === 'dark'
-        ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'
-        : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}';
-    L.tileLayer(baseUrl, { maxNativeZoom: 16, maxZoom: 16, attribution: 'Tiles © Esri' }).addTo(map);
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+    // keepBuffer + updateWhenZooming keep loaded tiles on screen through pans and
+    // zooms instead of blanking to the (near-black) container between loads.
+    L.tileLayer(baseUrl, { maxNativeZoom: 16, maxZoom: 16, keepBuffer: 6, updateWhenZooming: false, attribution: 'Tiles © Esri' }).addTo(map);
     L.circleMarker([selected.lat, selected.lon], {
       radius: 6, color: '#fff', weight: 2.5, fillColor: '#6E8BFF', fillOpacity: 1,
     }).addTo(map);
@@ -496,6 +503,13 @@ export function Radar() {
           </div>
         )}
         {l3def && l3.status === 'ok' && <L3Legend def={l3def} />}
+        {product === 'ref' && (
+          <div className="l3-legend">
+            <div className="l3-legend-bar" style={{ background: REFLECTIVITY_SCALE }} />
+            <div className="l3-legend-axis"><span>5</span><span>20</span><span>35</span><span>50</span><span>65+</span></div>
+            <div className="l3-legend-cap">Base reflectivity · dBZ</div>
+          </div>
+        )}
         {l3def && l3.status === 'error' && (
           <div className="radar-msg">
             <div className="radar-msg-card">
@@ -520,6 +534,7 @@ export function Radar() {
             min={0}
             max={FRAMES.length - 1}
             value={idx}
+            style={{ '--pct': `${(idx / Math.max(1, FRAMES.length - 1)) * 100}%` } as CSSProperties}
             onChange={(e) => { setPlaying(false); setIdx(Number(e.target.value)); }}
           />
           <div className="stamp">{stamp}</div>
@@ -535,6 +550,7 @@ export function Radar() {
             min={0}
             max={l3Frames.length - 1}
             value={Math.min(l3Idx, l3Frames.length - 1)}
+            style={{ '--pct': `${(Math.min(l3Idx, l3Frames.length - 1) / Math.max(1, l3Frames.length - 1)) * 100}%` } as CSSProperties}
             onChange={(e) => { setPlaying(false); setL3Idx(Number(e.target.value)); }}
           />
           <div className="stamp">{scanStamp}</div>

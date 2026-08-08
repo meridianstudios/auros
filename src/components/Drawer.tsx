@@ -1,5 +1,6 @@
-import { X, MapPin, CalendarDays, Bell, Info, Moon, Sun, User, LogIn, LogOut, Tv } from 'lucide-react';
+import { X, MapPin, CalendarDays, Bell, Info, User, LogIn, LogOut, Tv } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
+import { THEMES } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
 import type { View } from '../nav';
 
@@ -48,9 +49,18 @@ export function Drawer({ open, onClose, onNavigate }: { open: boolean; onClose: 
         )}
 
         <div className="drawer-seg">
-          <div className="seg">
-            <button className={scheme === 'dark' ? 'on' : ''} onClick={() => setScheme('dark')}><Moon size={15} /> Dark</button>
-            <button className={scheme === 'light' ? 'on' : ''} onClick={() => setScheme('light')}><Sun size={15} /> Light</button>
+          <div className="theme-pick compact">
+            {THEMES.map((t) => (
+              <button
+                key={t.key}
+                className={`theme-card ${scheme === t.key ? 'on' : ''}`}
+                onClick={() => setScheme(t.key)}
+                aria-pressed={scheme === t.key}
+              >
+                <span className="theme-swatch" data-theme-swatch={t.key} />
+                <span className="theme-name">{t.label}</span>
+              </button>
+            ))}
           </div>
         </div>
       </aside>

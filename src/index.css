@@ -12,11 +12,24 @@
   --warning: #FBBF24;
   --danger: #FB7185;
   --shadow: rgba(0, 0, 0, 0.5);
+  --glass: rgba(14, 18, 28, 0.62);
   --maxw: 500px;
   --r: 12px;
   --r-sm: 8px;
   --tab-h: 64px;
 }
+
+/* Bricolage Grotesque — the app face. A characterful grotesque with real
+   personality (and proper tabular figures for all the numbers), chosen to shed
+   the generic system/Inter "default" look. */
+@font-face { font-family: 'Bricolage Grotesque'; font-weight: 300; font-display: swap; src: url('/fonts/bricolage-300.woff2') format('woff2'); }
+@font-face { font-family: 'Bricolage Grotesque'; font-weight: 400; font-display: swap; src: url('/fonts/bricolage-400.woff2') format('woff2'); }
+@font-face { font-family: 'Bricolage Grotesque'; font-weight: 500; font-display: swap; src: url('/fonts/bricolage-500.woff2') format('woff2'); }
+@font-face { font-family: 'Bricolage Grotesque'; font-weight: 600; font-display: swap; src: url('/fonts/bricolage-600.woff2') format('woff2'); }
+@font-face { font-family: 'Bricolage Grotesque'; font-weight: 700; font-display: swap; src: url('/fonts/bricolage-700.woff2') format('woff2'); }
+/* Lato Bold — used only for the big hero temperature (a bold, confident humanist
+   numeral the user picked; everything else stays on Bricolage). */
+@font-face { font-family: 'Lato'; font-weight: 700; font-display: swap; src: url('/fonts/lato-700.woff2') format('woff2'); }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body, #root { height: 100%; margin: 0; }
@@ -24,7 +37,7 @@ html, body, #root { height: 100%; margin: 0; }
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif;
+  font-family: 'Bricolage Grotesque', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, system-ui, sans-serif;
   font-size: 15px;
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
@@ -58,7 +71,7 @@ input { font-family: inherit; }
 
 /* ---- Top bar (non-home screens) ---- */
 .topbar { padding: calc(env(safe-area-inset-top) + 22px) 20px 14px; }
-.topbar h1 { margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.5px; }
+.topbar h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
 .topbar p { margin: 4px 0 0; color: var(--text-muted); font-size: 14px; }
 
 /* ---- App header (brand + menu) ---- */
@@ -86,7 +99,7 @@ input { font-family: inherit; }
 .hero .place { display: inline-flex; align-items: center; gap: 5px; font-size: 15px; font-weight: 600; letter-spacing: 0.2px; color: var(--text-muted); }
 .hero .place svg { opacity: 0.85; }
 .hero-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.hero .temp { font-size: 78px; font-weight: 500; letter-spacing: -1px; line-height: 1.02; margin: 6px 0 0; }
+.hero .temp { font-family: 'Lato', -apple-system, system-ui, sans-serif; font-size: 78px; font-weight: 700; letter-spacing: -1px; line-height: 1.02; margin: 6px 0 0; }
 .hero .cond { font-size: 15px; color: var(--text-muted); }
 .hero .hero-ic { color: var(--primary); margin-top: 26px; flex: none; }
 .hero .meta { font-size: 13px; color: var(--text-dim); margin-top: 8px; }
@@ -211,11 +224,13 @@ input { font-family: inherit; }
 @media (prefers-reduced-motion: reduce) { .hero-sky *, .severe-banner { animation: none !important; } }
 
 /* ---- Conditions grid ---- */
-.cond-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-.ctile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 11px 13px; }
+.cond-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.ctile { background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0)), var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 13px 14px; }
+.ctile .ct-top { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.ctile .ct-ic { display: flex; color: var(--text-muted); }
 .ctile .ck { font-size: 10.5px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-dim); }
-.ctile .cv { font-size: 16px; font-weight: 600; margin-top: 3px; font-variant-numeric: tabular-nums; }
-.ctile .csub { font-size: 11px; color: var(--text-muted); font-weight: 500; margin-top: 1px; }
+.ctile .cv { font-size: 21px; font-weight: 600; letter-spacing: -0.3px; font-variant-numeric: tabular-nums; }
+.ctile .csub { font-size: 11.5px; color: var(--text-muted); font-weight: 500; margin-top: 2px; }
 @media (min-width: 560px) { .cond-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 1200px) { .home-view .cond-grid { grid-template-columns: repeat(5, 1fr); } }
 
@@ -238,13 +253,14 @@ input { font-family: inherit; }
 
 /* ---- Cards ---- */
 .card {
-  background: var(--surface); border-radius: var(--r);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0)), var(--surface);
+  border-radius: 14px;
   padding: 18px; margin-bottom: 14px;
   border: 1px solid var(--border);
 }
 
 /* iOS-style grouped list */
-.group { background: var(--surface); border-radius: var(--r); overflow: hidden; border: 1px solid var(--border); }
+.group { background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0)), var(--surface); border-radius: 14px; overflow: hidden; border: 1px solid var(--border); }
 .item { display: flex; align-items: center; gap: 14px; padding: 15px 18px; position: relative; width: 100%; text-align: left; }
 .item + .item::before { content: ''; position: absolute; top: 0; left: 18px; right: 0; height: 1px; background: var(--border); }
 .item .ic { color: var(--text-muted); flex: none; display: flex; }
@@ -253,6 +269,17 @@ input { font-family: inherit; }
 .item .s { color: var(--text-muted); font-size: 13px; margin-top: 1px; }
 .chev { color: var(--text-dim); flex: none; }
 
+/* 7-day forecast rows — day · icon · precip · low —[gradient range bar]— high */
+.drow { display: grid; grid-template-columns: 46px 26px 32px 30px 1fr 32px; align-items: center; gap: 9px; padding: 12px 15px; position: relative; }
+.drow + .drow::before { content: ''; position: absolute; top: 0; left: 15px; right: 15px; height: 1px; background: var(--border); }
+.drow-day { font-weight: 500; font-size: 14px; }
+.drow-ic { display: flex; justify-content: center; }
+.drow-pop { font-size: 12px; font-weight: 600; color: #56b8f0; text-align: right; font-variant-numeric: tabular-nums; }
+.drow-lo { font-size: 14px; color: var(--text-muted); text-align: right; font-variant-numeric: tabular-nums; }
+.drow-track { position: relative; height: 5px; border-radius: 3px; background: var(--surface-alt); }
+.drow-fill { position: absolute; top: 0; bottom: 0; border-radius: 3px; min-width: 5px; }
+.drow-hi { font-size: 14px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+
 /* ---- Risk strip ---- */
 .risk { display: flex; align-items: center; gap: 12px; }
 .risk .swatch { width: 8px; height: 36px; border-radius: 3px; flex: none; }
@@ -260,8 +287,40 @@ input { font-family: inherit; }
 .risk .src { color: var(--text-dim); font-size: 12px; margin-top: 1px; }
 
 /* ---- Alert accent bar ---- */
-.alert-accent { width: 3px; align-self: stretch; border-radius: 3px; flex: none; }
-.alert-body { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); white-space: pre-wrap; line-height: 1.55; font-size: 14px; color: var(--text-muted); }
+/* ===== Alerts — hazard-colored cards (Alerts screen + home) ===== */
+.alert-card { position: relative; margin-bottom: 10px; border-radius: 14px; overflow: hidden;
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+  border-left: 4px solid var(--accent); }
+.alert-card-head { display: flex; gap: 12px; align-items: flex-start; width: 100%; text-align: left; padding: 14px 15px; }
+.alert-card-head:active { opacity: 0.82; }
+.alert-card-ic { color: var(--accent); flex: none; display: flex; margin-top: 1px; }
+.alert-card-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.alert-card-event { font-weight: 700; font-size: 15px; letter-spacing: -0.2px; }
+.alert-card-tier { font-size: 9.5px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; flex: none;
+  padding: 2px 7px; border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: color-mix(in srgb, var(--accent) 70%, var(--text)); }
+.alert-card-headline { font-size: 13px; color: var(--text-muted); margin-top: 4px; line-height: 1.4;
+  overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.alert-card-meta { font-size: 12px; color: var(--text-dim); margin-top: 6px; }
+.alert-card-chev { color: var(--text-dim); flex: none; transition: transform 0.25s ease; margin-top: 2px; }
+.alert-card-chev.open { transform: rotate(180deg); }
+.alert-body { padding: 12px 15px 15px; white-space: pre-wrap; line-height: 1.55; font-size: 13.5px; color: var(--text-muted);
+  border-top: 1px solid color-mix(in srgb, var(--accent) 16%, var(--border)); }
+.allclear { text-align: center; padding: 44px 20px; }
+.allclear-ic { display: inline-flex; color: var(--success); }
+.allclear-t { font-size: 18px; font-weight: 600; margin-top: 10px; }
+.allclear-s { font-size: 14px; color: var(--text-muted); margin-top: 5px; line-height: 1.5; }
+.alert-src { text-align: center; font-size: 11px; color: var(--text-dim); margin-top: 18px; }
+
+/* Local storm reports */
+.lsr-item { display: flex; gap: 11px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; margin-bottom: 8px;
+  background: var(--surface); border: 1px solid var(--border); }
+.lsr-ic { flex: none; display: flex; margin-top: 1px; }
+.lsr-title { font-weight: 600; font-size: 14px; }
+.lsr-meta { font-size: 12px; color: var(--text-dim); margin-top: 3px; }
+.lsr-remark { font-size: 12.5px; color: var(--text-muted); margin-top: 5px; line-height: 1.45; }
 
 /* ---- Buttons ---- */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: var(--r-sm); padding: 13px 16px; font-weight: 600; font-size: 15px; transition: opacity .15s, background .15s; }
@@ -272,6 +331,20 @@ input { font-family: inherit; }
 .seg button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 9px; border-radius: 6px; font-weight: 600; color: var(--text-muted); }
 .seg button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 4px var(--shadow); }
 
+/* Theme picker — a swatch per theme, active one ringed in the accent. */
+.theme-pick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+.theme-card { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 6px 10px; border-radius: 14px;
+  background: var(--surface); border: 1px solid var(--border); cursor: pointer; color: var(--text-muted);
+  transition: border-color 0.15s ease, background 0.15s ease; }
+.theme-card.on { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, var(--surface)); }
+.theme-swatch { width: 34px; height: 34px; border-radius: 9px; }
+.theme-swatch[data-theme-swatch="midnight"] { background: linear-gradient(135deg, #08080A, #1F1F22); box-shadow: inset 0 0 0 2px #8AB4F8; }
+.theme-swatch[data-theme-swatch="storm"] { background: linear-gradient(135deg, #08111A, #17303F); box-shadow: inset 0 0 0 2px #2FC2D4; }
+.theme-swatch[data-theme-swatch="dark"] { background: linear-gradient(135deg, #0A0C12, #1C1F2B); box-shadow: inset 0 0 0 2px #5B8DEF; }
+.theme-name { font-size: 12.5px; font-weight: 600; color: var(--text); }
+.theme-hint { font-size: 10px; color: var(--text-dim); }
+.theme-pick.compact .theme-card { padding: 10px 4px; }
+
 /* ---- Inputs ---- */
 .input { width: 100%; background: var(--surface-alt); color: var(--text); border-radius: var(--r-sm); padding: 13px 15px; border: 1px solid var(--border); font-size: 15px; outline: none; }
 .input:focus { border-color: var(--primary); }
@@ -279,14 +352,16 @@ input { font-family: inherit; }
 
 /* ---- Radar ---- */
 .radar-stage { flex: 1; min-height: 0; position: relative; }
-#radar-map { position: absolute; inset: 0; background: var(--bg); }
+/* A dark slate close to the Esri Dark Gray basemap, so tiles that haven't loaded
+   yet read as empty map rather than black squares. */
+#radar-map { position: absolute; inset: 0; background: #23252b; }
 .radar-float {
   position: absolute; top: calc(env(safe-area-inset-top) + 14px); left: 16px; right: 16px; z-index: 600;
   display: flex; justify-content: space-between; align-items: center; gap: 10px; pointer-events: none;
 }
-.radar-pill { background: color-mix(in srgb, var(--bg) 78%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--border); border-radius: 12px; padding: 8px 12px; }
-.radar-pill .ttl { font-weight: 600; font-size: 14px; }
-.radar-pill .sub { color: var(--text-muted); font-size: 11px; margin-top: 1px; }
+.radar-pill { background: color-mix(in srgb, var(--bg) 78%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--border); border-radius: 12px; padding: 8px 14px; }
+.radar-pill .ttl { font-weight: 700; font-size: 16px; letter-spacing: -0.2px; white-space: nowrap; }
+.radar-pill .sub { color: var(--text-muted); font-size: 12px; margin-top: 1px; white-space: nowrap; }
 .radar-ts { font-variant-numeric: tabular-nums; font-weight: 600; font-size: 13px; }
 /* Radar playback controls */
 .radar-controls {
@@ -296,17 +371,17 @@ input { font-family: inherit; }
   backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
   border-top: 1px solid var(--border);
 }
-.radar-controls .play { width: 42px; height: 42px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; flex: none; }
+.radar-controls .play { width: 42px; height: 42px; border-radius: 50%; background: #fff; color: #0d1420; display: flex; align-items: center; justify-content: center; flex: none; }
 .radar-controls .play:active { opacity: .8; }
 .radar-controls .stamp { font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 600; min-width: 70px; text-align: right; }
 .radar-controls .stamp .fc { color: var(--warning); font-weight: 600; }
-input[type="range"].slider { -webkit-appearance: none; appearance: none; flex: 1; height: 4px; border-radius: 999px; background: var(--surface-alt); outline: none; }
-input[type="range"].slider::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--primary); cursor: pointer; box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 22%, transparent); }
-input[type="range"].slider::-moz-range-thumb { width: 16px; height: 16px; border: none; border-radius: 50%; background: var(--primary); }
+input[type="range"].slider { -webkit-appearance: none; appearance: none; flex: 1; height: 5px; border-radius: 999px; background: linear-gradient(90deg, #fff 0 var(--pct, 0%), rgba(255, 255, 255, 0.16) var(--pct, 0%)); outline: none; }
+input[type="range"].slider::-webkit-slider-thumb { -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%; background: #fff; cursor: pointer; box-shadow: 0 1px 5px rgba(0, 0, 0, 0.55); }
+input[type="range"].slider::-moz-range-thumb { width: 15px; height: 15px; border: none; border-radius: 50%; background: #fff; box-shadow: 0 1px 5px rgba(0, 0, 0, 0.55); }
 
 /* Radar product switcher (floating) */
 .radar-products {
-  position: absolute; top: calc(env(safe-area-inset-top) + 66px); left: 50%; transform: translateX(-50%);
+  position: absolute; top: calc(env(safe-area-inset-top) + 90px); left: 16px;
   z-index: 600; display: flex; gap: 3px; padding: 4px;
   background: color-mix(in srgb, var(--bg) 82%, transparent);
   backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
@@ -315,18 +390,18 @@ input[type="range"].slider::-moz-range-thumb { width: 16px; height: 16px; border
 }
 .radar-products::-webkit-scrollbar { display: none; }
 .radar-products button { flex: 0 0 auto; padding: 7px 10px; border-radius: 9px; font-size: 12px; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
-.radar-products button.on { background: var(--primary); color: #fff; }
+.radar-products button.on { background: rgba(255, 255, 255, 0.16); color: #fff; }
 
 /* Satellite toggle (below the product switcher) */
 .radar-sat {
-  position: absolute; top: calc(env(safe-area-inset-top) + 108px); left: 50%; transform: translateX(-50%);
+  position: absolute; top: calc(env(safe-area-inset-top) + 14px); right: 62px;
   z-index: 600; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
   padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--text-muted);
   background: color-mix(in srgb, var(--bg) 82%, transparent);
   backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
   border: 1px solid var(--border);
 }
-.radar-sat.on { background: var(--primary); color: #fff; border-color: var(--primary); }
+.radar-sat.on { background: rgba(255, 255, 255, 0.16); color: #fff; border-color: rgba(255, 255, 255, 0.28); }
 
 /* Radar "needs backend" message (velocity / CC) */
 .radar-msg { position: absolute; inset: 0; z-index: 590; display: flex; align-items: center; justify-content: center; padding: 24px; pointer-events: none; }
@@ -441,12 +516,15 @@ input[type="range"].slider::-moz-range-thumb { width: 16px; height: 16px; border
   .tab.active { background: color-mix(in srgb, var(--primary) 14%, transparent); }
   .view { max-width: 760px; margin: 0 auto; }
   .radar-view { max-width: none; margin: 0; }
+  /* Home goes full-width so the sky is edge-to-edge; content stays in a centered column. */
+  .home-view { max-width: none; margin: 0; }
+  .home-inner { max-width: 760px; margin: 0 auto; }
   .app-header .brand { display: none; }
 }
 
 /* ===== Desktop: home dashboard — wider + 2-column cards to fill the space ===== */
 @media (min-width: 1200px) {
-  .home-view { max-width: 1500px; }
+  .home-inner { max-width: 1500px; margin: 0 auto; }
   .home-view .dash { display: grid; grid-template-columns: 1.4fr 1fr; column-gap: 22px; align-items: start; }
   .home-view .hero .temp { font-size: 92px; }
   .home-view .hero-ic svg { width: 84px; height: 84px; }
@@ -539,7 +617,7 @@ input[type="range"].slider::-moz-range-thumb { width: 16px; height: 16px; border
 
 /* ===== L3 elevation tilt selector (right edge) ===== */
 .radar-tilts {
-  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  position: absolute; right: 16px; top: calc(env(safe-area-inset-top) + 140px);
   z-index: 600; display: flex; flex-direction: column; gap: 3px; padding: 4px;
   background: color-mix(in srgb, var(--bg) 82%, transparent);
   backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
@@ -550,7 +628,7 @@ input[type="range"].slider::-moz-range-thumb { width: 16px; height: 16px; border
   color: var(--text-muted); text-align: center; padding: 2px 0 1px;
 }
 .radar-tilts button { padding: 6px 9px; border-radius: 8px; font-size: 12px; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
-.radar-tilts button.on { background: var(--primary); color: #fff; }
+.radar-tilts button.on { background: rgba(255, 255, 255, 0.16); color: #fff; }
 
 /* ===== New-alert alarm (app-wide) ===== */
 .alarm-backdrop {
@@ -614,4 +692,122 @@ input[type="range"].slider::-moz-range-thumb { width: 16px; height: 16px; border
   text-shadow: 0 1px 10px rgba(0, 0, 0, 0.6);
 }
 .hero.has-photo .place, .hero.has-photo .cond { color: rgba(255, 255, 255, 0.92); }
-.hero.has-photo .hstat { background: rgba(18, 22, 32, 0.6); border-color: rgba(255, 255, 255, 0.12); }
+.hero.has-photo .hstat { background: var(--glass); border-color: rgba(255, 255, 255, 0.12); }
+
+/* ===== Photographic weather sky (non-city locations) ===== */
+/* A real sky photo picked by condition + day/night, drifting slowly (Ken Burns). */
+.hero-photo.sky-photo {
+  transform: scale(1.08); transform-origin: 58% 42%;
+  animation: skp-drift 46s ease-in-out infinite alternate;
+}
+.hero-photo.sky-photo.skp-night { filter: brightness(0.58) saturate(0.82); }
+/* A top + bottom scrim so the white place/temp text reads even on bright skies. */
+.hero-photo.sky-photo::after {
+  background: linear-gradient(to bottom,
+    rgba(9, 11, 17, 0.46) 0%, rgba(9, 11, 17, 0.15) 24%,
+    rgba(9, 11, 17, 0.5) 64%, rgba(9, 11, 17, 0.93) 100%);
+}
+@keyframes skp-drift {
+  from { transform: scale(1.06) translate(0, 0); }
+  to   { transform: scale(1.13) translate(-2%, -1.5%); }
+}
+
+/* Live precipitation / lightning layered over the photo (below the text). */
+.skp-rain, .skp-snow, .skp-flash { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.skp-rain {
+  background-image: repeating-linear-gradient(104deg, transparent 0 7px, rgba(200, 214, 240, 0.34) 7px 8px);
+  background-size: 15px 15px; opacity: 0.5;
+  -webkit-mask-image: linear-gradient(to bottom, #000 60%, transparent); mask-image: linear-gradient(to bottom, #000 60%, transparent);
+  animation: skp-rainfall 0.5s linear infinite;
+}
+.skp-snow {
+  background-repeat: repeat; background-size: 210px 210px; opacity: 0.85;
+  background-image:
+    radial-gradient(2.2px 2.2px at 12% 8%, #fff, transparent),
+    radial-gradient(2px 2px at 32% 38%, rgba(255,255,255,0.9), transparent),
+    radial-gradient(1.6px 1.6px at 52% 18%, #fff, transparent),
+    radial-gradient(2.4px 2.4px at 72% 58%, #fff, transparent),
+    radial-gradient(1.6px 1.6px at 86% 28%, rgba(255,255,255,0.85), transparent),
+    radial-gradient(2px 2px at 22% 72%, rgba(255,255,255,0.8), transparent);
+  -webkit-mask-image: linear-gradient(to bottom, #000 66%, transparent); mask-image: linear-gradient(to bottom, #000 66%, transparent);
+  animation: skp-snowfall 11s linear infinite;
+}
+.skp-flash { background: radial-gradient(circle at 58% 14%, rgba(255, 255, 255, 0.5), transparent 58%); opacity: 0; animation: skp-flash 8s linear infinite; }
+@keyframes skp-rainfall { from { background-position: 0 0; } to { background-position: -15px 30px; } }
+@keyframes skp-snowfall { from { background-position: 0 0; } to { background-position: 40px 210px; } }
+@keyframes skp-flash { 0%, 88%, 100% { opacity: 0; } 89% { opacity: 0.65; } 90% { opacity: 0.1; } 92% { opacity: 0.5; } 94% { opacity: 0; } }
+
+/* Premium hero over any photo: bigger, thinner temp + frosted glass stat pills. */
+.hero.has-photo { min-height: 270px; }
+.hero.has-photo .temp { color: #fff; font-weight: 700; font-size: 86px; letter-spacing: -1px; }
+.hero.has-photo .cond { color: rgba(255, 255, 255, 0.92); font-size: 16px; font-weight: 500; }
+.hero.has-photo .hero-ic { color: #fff; }
+.hero.has-photo .hstat {
+  background: var(--glass); border-color: rgba(255, 255, 255, 0.16); border-radius: 12px;
+  backdrop-filter: blur(9px); -webkit-backdrop-filter: blur(9px);
+}
+.hero.has-photo .hstat .hk { color: rgba(255, 255, 255, 0.72); }
+.hero.has-photo .hstat .hv { color: #fff; }
+@media (prefers-reduced-motion: reduce) {
+  .hero-photo.sky-photo { animation: none; }
+  .skp-rain, .skp-snow, .skp-flash { animation: none; }
+}
+
+/* ===== Immersive whole-page sky (home only) ===== */
+.home-view { position: relative; }
+/* Content rides in a centered column; the sky host fills the full width behind it. */
+.home-inner { position: relative; z-index: 1; }
+/* The sky is pinned to the viewport: a zero-height sticky host, with its layer
+   filling the screen, so all the content scrolls over one fixed sky. */
+/* The sky host spans the whole scrollable home; its layer is sticky, so the
+   image stays pinned to the viewport and fills it for the entire scroll — no
+   black gap below the hero. */
+.home-sky { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.home-sky-layer { position: sticky; top: 0; height: 100vh; overflow: hidden; }
+.home-sky-img { position: absolute; inset: 0; background-size: cover; background-position: center 30%;
+  transform: scale(1.05); transform-origin: 55% 40%; animation: skp-drift 46s ease-in-out infinite alternate; }
+.home-sky.skp-night .home-sky-img { filter: brightness(0.6) saturate(0.82); }
+/* Moderate tint (never full black) so the photo reads behind every section;
+   the glass cards carry text legibility. */
+.home-sky-tint { position: absolute; inset: 0; background: linear-gradient(to bottom,
+  rgba(9, 11, 17, 0.22) 0%, rgba(9, 11, 17, 0.36) 28%, rgba(9, 11, 17, 0.7) 58%, var(--bg) 100%); }
+.home-sky .skp-rain, .home-sky .skp-snow, .home-sky .skp-flash { position: absolute; inset: 0; }
+@media (prefers-reduced-motion: reduce) { .home-sky-img { animation: none; } }
+
+/* Content rides above the pinned sky. */
+.home-view .app-header, .home-view .hero, .home-view .pad { position: relative; z-index: 1; }
+.home-view .app-header .brand, .home-view .app-header .brand svg { color: #fff; text-shadow: 0 1px 10px rgba(0, 0, 0, 0.4); }
+.home-view .hero .place { color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7), 0 1px 12px rgba(0, 0, 0, 0.5); }
+.home-view .hero .refresh-btn { color: rgba(255, 255, 255, 0.85); text-shadow: 0 1px 10px rgba(0, 0, 0, 0.5); }
+.home-view .label { color: rgba(255, 255, 255, 0.62); }
+
+/* Cards become translucent glass so the sky reads through — home only. */
+.home-view .card, .home-view .group {
+  background: var(--glass); border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+}
+.home-view .ctile { background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08); }
+.home-view .item + .item::before, .home-view .drow + .drow::before { background: rgba(255, 255, 255, 0.09); }
+
+/* Collapsible glass sections (home). */
+.home-view .hsec { background: var(--glass); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: var(--r);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); margin-bottom: 14px; overflow: hidden; }
+.hsec-head { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 15px 16px; background: transparent; color: var(--text); cursor: pointer; text-align: left; }
+.hsec.open .hsec-head { border-bottom: 1px solid rgba(255, 255, 255, 0.07); }
+.hsec-head:active { opacity: 0.75; }
+.hsec-title { font-size: 14px; font-weight: 700; letter-spacing: 0.2px; }
+.hsec-right { display: flex; align-items: center; gap: 12px; }
+.hsec-action { display: inline-flex; align-items: center; gap: 2px; font-size: 11px; font-weight: 700; letter-spacing: 0.7px; color: rgba(255, 255, 255, 0.55); }
+.hsec-chev { color: rgba(255, 255, 255, 0.5); transition: transform 0.3s ease; flex: none; }
+.hsec.open .hsec-chev { transform: rotate(180deg); }
+.hsec-body { max-height: 0; overflow: hidden; opacity: 0; padding: 0 15px; transition: max-height 0.35s ease, opacity 0.25s ease, padding 0.3s ease; }
+.hsec.open .hsec-body { max-height: 1600px; opacity: 1; padding: 14px 15px 16px; }
+.hsec-body.flush { padding-left: 0; padding-right: 0; }
+.hsec.open .hsec-body.flush { padding: 4px 0 6px; }
+/* Inner content blends into the panel — no nested glass cards. */
+.home-view .hsec-body .hg-card, .home-view .hsec-body .group {
+  background: transparent; border: none; border-radius: 0; margin: 0;
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+.home-view .hsec-body .hg-card { padding: 0; }
+@media (prefers-reduced-motion: reduce) { .hsec-body { transition: none; } }

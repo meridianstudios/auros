@@ -1,6 +1,9 @@
 // Refined, minimal palette (applied as CSS variables) + SPC risk + severity colors.
 
-export type Scheme = 'dark' | 'light';
+// The app ships three cool, dark-family themes that harmonize with the
+// photographic sky. (A true light mode is a separate future project — the
+// immersive UI is built dark-first.)
+export type Scheme = 'dark' | 'midnight' | 'storm';
 
 export interface Palette {
   background: string;
@@ -16,9 +19,13 @@ export interface Palette {
   warning: string;
   danger: string;
   shadow: string;
+  // Translucent card fill for the immersive (sky-backed) surfaces — a
+  // theme-tinted frosted glass that sits over the photo.
+  glass: string;
 }
 
 export const palettes: Record<Scheme, Palette> = {
+  // Dark — the original blue-slate. The default.
   dark: {
     background: '#0A0C12',
     surface: '#13161F',
@@ -33,23 +40,50 @@ export const palettes: Record<Scheme, Palette> = {
     warning: '#FBBF24',
     danger: '#FB7185',
     shadow: 'rgba(0,0,0,0.5)',
+    glass: 'rgba(14,18,28,0.62)',
   },
-  light: {
-    background: '#FBFBFD',
-    surface: '#FFFFFF',
-    surfaceAlt: '#F1F3F8',
-    border: 'rgba(0,0,0,0.08)',
-    text: '#0B0D14',
-    textMuted: '#6B7180',
-    textDim: '#9AA0AE',
-    primary: '#3B6FE5',
-    accent: '#3B6FE5',
-    success: '#16A34A',
-    warning: '#D97706',
-    danger: '#E11D48',
-    shadow: 'rgba(20,30,60,0.10)',
+  // Midnight — true black, neutral cool. Highest contrast.
+  midnight: {
+    background: '#08080A',
+    surface: '#141416',
+    surfaceAlt: '#1F1F22',
+    border: 'rgba(255,255,255,0.09)',
+    text: '#F4F6FB',
+    textMuted: '#9A9AA6',
+    textDim: '#5C5C66',
+    primary: '#8AB4F8',
+    accent: '#8AB4F8',
+    success: '#4ADE80',
+    warning: '#FBBF24',
+    danger: '#FB7185',
+    shadow: 'rgba(0,0,0,0.62)',
+    glass: 'rgba(24,24,28,0.62)',
+  },
+  // Storm — deep slate with a teal accent that agrees with the sky.
+  storm: {
+    background: '#08111A',
+    surface: '#0F1E29',
+    surfaceAlt: '#17303F',
+    border: 'rgba(180,220,255,0.10)',
+    text: '#EEF4F8',
+    textMuted: '#8BA0B0',
+    textDim: '#5A7080',
+    primary: '#2FC2D4',
+    accent: '#2FC2D4',
+    success: '#4ADE80',
+    warning: '#FBBF24',
+    danger: '#FB7185',
+    shadow: 'rgba(0,0,0,0.55)',
+    glass: 'rgba(14,26,36,0.60)',
   },
 };
+
+// User-facing theme list (order shown in the picker).
+export const THEMES: { key: Scheme; label: string; hint: string }[] = [
+  { key: 'midnight', label: 'Midnight', hint: 'True black' },
+  { key: 'storm', label: 'Storm', hint: 'Slate & teal' },
+  { key: 'dark', label: 'Dark', hint: 'Blue slate' },
+];
 
 export interface RiskMeta {
   key: string;
